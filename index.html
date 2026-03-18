@@ -2,17 +2,14 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Firebase Cloud Project</title>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; background-color: #f0f2f5; }
-        .form-container { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.1); width: 100%; max-width: 350px; }
-        h3 { margin-top: 0; color: #1a73e8; text-align: center; margin-bottom: 20px; }
-        input { width: 100%; padding: 12px; margin-bottom: 15px; border: 1px solid #dadce0; border-radius: 6px; box-sizing: border-box; font-size: 14px; }
-        input:focus { outline: none; border-color: #1a73e8; box-shadow: 0 0 0 2px rgba(26,115,232,0.2); }
-        button { width: 100%; padding: 12px; background: #1a73e8; border: none; color: white; font-weight: bold; cursor: pointer; border-radius: 6px; transition: background 0.3s; font-size: 16px; }
-        button:hover { background: #1557b0; }
-        button:active { transform: scale(0.98); }
+        body { font-family: sans-serif; display: flex; justify-content: center; padding: 50px; background-color: #f4f4f9; }
+        .form-container { background: white; padding: 25px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 300px; }
+        h3 { margin-top: 0; color: #333; text-align: center; }
+        input { width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; }
+        button { width: 100%; padding: 10px; background: #64b5f6; border: none; color: white; font-weight: bold; cursor: pointer; border-radius: 5px; transition: 0.3s; }
+        button:hover { background: #42a5f5; }
     </style>
 </head>
 <body>
@@ -22,24 +19,23 @@
     <form id="feedbackForm">
         <input type="text" id="userName" placeholder="Ваше имя" required>
         <input type="email" id="userEmail" placeholder="Ваш Email" required>
-        <button type="submit" id="submitBtn">Отправить в облако</button>
+        <button type="submit">Отправить в облако</button>
     </form>
 </div>
 
 <script type="module">
-    // 1. ПРАВИЛЬНЫЕ ИМПОРТЫ (с полными путями к JS-файлам)
+    // 1. ИСПРАВЛЕНО: Полные пути к модулям Firebase
     import { initializeApp } from "https://gstatic.com";
     import { getFirestore, collection, addDoc } from "https://gstatic.com";
 
-    // 2. Ваша конфигурация проекта
+    // 2. ИСПРАВЛЕНО: Восстановлен правильный authDomain
     const firebaseConfig = {
-        apiKey: "AIzaSyBPnoCcL-TUYTdYPaJunewfsaWIylyDE7w",
-        authDomain: "://firebaseapp.com",
-        projectId: "test-da803",
-        storageBucket: "test-da803.firebasestorage.app",
-        messagingSenderId: "501020279316",
-        appId: "1:501020279316:web:7acd5a849fcd0df318dd01",
-        measurementId: "G-XYN6569D33"
+        apiKey: "AIzaSyD6j7BH_Dy5v6DEgua7nM13DNmiE3SBuYQ",
+        authDomain: "enter-45f17.firebaseapp.com",
+        projectId: "enter-45f17",
+        storageBucket: "enter-45f17.firebasestorage.app",
+        messagingSenderId: "672982908171",
+        appId: "1:672982908171:web:c216fe2b8087e51f7f426e"
     };
 
     // 3. Инициализация
@@ -47,36 +43,26 @@
     const db = getFirestore(app);
 
     // 4. Логика формы
-    const form = document.getElementById("feedbackForm");
-    const btn = document.getElementById("submitBtn");
-
-    form.addEventListener("submit", async (e) => {
+    document.getElementById("feedbackForm").addEventListener("submit", async (e) => {
         e.preventDefault();
-        
-        // Блокируем кнопку, чтобы не нажали дважды
-        btn.disabled = true;
-        btn.innerText = "Отправка...";
 
-        const name = document.getElementById("userName").value;
-        const email = document.getElementById("userEmail").value;
+        const nameInput = document.getElementById("userName").value;
+        const emailInput = document.getElementById("userEmail").value;
 
         try {
-            // Запись в Firestore (коллекция "requests")
-            const docRef = await addDoc(collection(db, "requests"), {
-                name: name,
-                email: email,
+            await addDoc(collection(db, "requests"), {
+                name: nameInput,
+                email: emailInput,
                 timestamp: new Date()
             });
 
-            console.log("Документ записан с ID: ", docRef.id);
-            alert("✅ Успешно! Данные сохранены в Firebase.");
-            form.reset();
+            alert("Готово! Данные сохранены в Firebase.");
+            document.getElementById("feedbackForm").reset();
         } catch (error) {
-            console.error("Ошибка Firebase: ", error);
-            alert("❌ Ошибка: " + error.message);
-        } finally {
-            btn.disabled = false;
-            btn.innerText = "Отправить в облако";
+            // Если ошибка в консоли пишет "Missing or insufficient permissions", 
+            // значит нужно поменять Rules в консоли Firebase на allow write: if true;
+            console.error("Ошибка записи: ", error);
+            alert("Ошибка! Проверьте правила доступа в консоли Firebase.");
         }
     });
 </script>
