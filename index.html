@@ -1,69 +1,155 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Test</title>
+    <title>BaaS - Панель управления</title>
     <style>
-        body { font-family: sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; background-color: #f4f4f9; }
-        .form-container { background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); width: 300px; }
-        input { width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
-        button { width: 100%; padding: 10px; background: #0084ff; border: none; color: white; font-weight: bold; cursor: pointer; border-radius: 4px; }
-        button:hover { background: #0073e6; }
+        body { font-family: 'Inter', sans-serif; background: #f4f7f6; display: flex; flex-direction: column; align-items: center; padding: 20px; }
+        .container { width: 100%; max-width: 500px; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        input { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; }
+        
+        button#mainBtn { background: #007bff; color: white; border: none; padding: 12px; border-radius: 6px; width: 100%; font-weight: 600; cursor: pointer; transition: 0.3s; }
+        button#mainBtn:hover { background: #0056b3; }
+        button#mainBtn:disabled { background: #ccc; cursor: not-allowed; }
+
+        .post { background: #fff; border: 1px solid #eaeaea; padding: 15px; margin-top: 15px; border-radius: 8px; width: 100%; max-width: 500px; position: relative; }
+        .time { font-size: 11px; color: #999; float: right; }
+        
+        .actions { display: flex; gap: 10px; margin-top: 10px; align-items: center; }
+
+        .btn-reaction { cursor: pointer; border: none; background: #f8f9fa; padding: 6px 14px; border-radius: 20px; font-size: 14px; transition: 0.2s; display: flex; align-items: center; gap: 5px; }
+        .btn-reaction:hover { background: #e2e6ea; }
+        
+        .btn-edit {
+            cursor: pointer;
+            background: #e7f3ff; 
+            color: #007bff; 
+            border: 1px solid #c2e0ff;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+            transition: 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .btn-edit:hover {
+            background: #007bff;
+            color: white;
+            border-color: #007bff;
+        }
     </style>
 </head>
 <body>
 
-<div class="form-container">
-    <form id="contact-form">
-        <input type="text" id="username" placeholder="Your Name" required>
-        <input type="email" id="useremail" placeholder="Your Email" required>
-        <button type="submit">Submit & Request</button>
-    </form>
-</div>
+    <div class="container">
+        <h3>Панель управления данными</h3>
+        <input type="text" id="name" placeholder="Имя профиля">
+        <input type="email" id="email" placeholder="Рабочий Email">
+        <button id="mainBtn">Панель управления постами</button>
+    </div>
 
-<script type="module">
-    // Фикс: указаны полные ссылки на актуальную версию SDK
-    import { initializeApp } from "https://gstatic.com";
-    import { getFirestore, collection, addDoc } from "https://gstatic.com";
+    <div id="feed" style="width: 100%; max-width: 500px;"></div>
 
-    // Ваша конфигурация
-    const firebaseConfig = {
-        apiKey: "AIzaSyBPnoCcL-TUYTdYPaJunewfsaWIylyDE7w",
-        authDomain: "://firebaseapp.com",
-        projectId: "test-da803",
-        storageBucket: "test-da803.firebasestorage.app",
-        messagingSenderId: "501020279316",
-        appId: "1:501020279316:web:7acd5a849fcd0df318dd01",
-        measurementId: "G-XYN6569D33"
-    };
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js&quot;;
+        import { 
+            getFirestore, collection, addDoc, query, orderBy, onSnapshot, 
+            serverTimestamp, updateDoc, doc, increment 
+        } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js&quot;;
 
-    // Инициализация
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
+        const firebaseConfig = {
+            apiKey: "AIzaSyBucYbom6btGkn1kBhV72RXAd7dGamxJq0",
+            authDomain: "ilham-d9438.firebaseapp.com",
+            projectId: "ilham-d9438",
+            storageBucket: "ilham-d9438.firebasestorage.app",
+            messagingSenderId: "498564012469",
+            appId: "1:498564012469:web:d3ace73422dac888b021fc",
+            measurementId: "G-PHBGQD3JJJ"
+        };
 
-    // Обработчик формы
-    document.getElementById("contact-form").addEventListener("submit", async (e) => {
-        e.preventDefault();
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
 
-        const userName = document.getElementById("username").value;
-        const userEmail = document.getElementById("useremail").value;
+        // ФУНКЦИЯ 1: Изменение счетчиков (лайки и дизлайки) через increment
+        window.processReaction = async (id, field) => {
+            const docRef = doc(db, "requests", id);
+            try {
+                await updateDoc(docRef, { [field]: increment(1) });
+            } catch (e) {
+                console.error("Ошибка обновления счетчика:", e.message);
+                alert("Ошибка: " + e.message);
+            }
+        };
 
-        try {
-            // Фикс: добавлен await для асинхронной отправки
-            await addDoc(collection(db, "requests"), {
-                name: userName,
-                email: userEmail,
-                timestamp: new Date()
-            });
+        window.editName = async (id, currentName) => {
+            const newName = prompt("Введите новое имя профиля:", currentName);
+            if (newName && newName !== currentName) {
+                const docRef = doc(db, "requests", id);
+                try {
+                    await updateDoc(docRef, { name: newName });
+                } catch (e) {
+                    console.error("Ошибка редактирования:", e.message);
+                    alert("Ошибка при сохранении: " + e.message);
+                }
+            }
+        };
+
+        document.getElementById('mainBtn').onclick = async () => {
+            const nameInput = document.getElementById('name');
+            const emailInput = document.getElementById('email');
             
-            alert("Заявка успешно отправлена!");
-            document.getElementById("contact-form").reset();
-        } catch (error) {
-            console.error("Ошибка при отправке:", error);
-            alert("Ошибка! Проверьте консоль браузера (F12). Возможно, закрыты правила доступа в Firebase.");
-        }
-    });
-</script>
+            if (!nameInput.value || !emailInput.value) return alert("Заполните все поля");
 
+            const btn = document.getElementById('mainBtn');
+            btn.disabled = true;
+            
+            try {
+                await addDoc(collection(db, "requests"), {
+                    name: nameInput.value,
+                    email: emailInput.value,
+                    likes: 0,
+                    dislikes: 0,
+                    timestamp: serverTimestamp()
+                });
+                nameInput.value = "";
+                emailInput.value = "";
+            } catch (e) {
+                console.error("Ошибка публикации:", e.message);
+                alert("Ошибка сохранения: проверьте Security Rules в Firebase Console!");
+            }
+            btn.disabled = false;
+        };
+
+        const q = query(collection(db, "requests"), orderBy("timestamp", "desc"));
+        onSnapshot(q, (snapshot) => {
+            const feed = document.getElementById('feed');
+            feed.innerHTML = "";
+            snapshot.forEach((doc) => {
+                const data = doc.data();
+                feed.innerHTML += `
+                    <div class="post">
+                        <span class="time">${data.timestamp?.toDate().toLocaleString() || '...'}</span>
+                        <b>${data.name}</b>
+                        <p style="margin: 5px 0;">${data.email}</p>
+                        
+                        <div class="actions">
+                            <button class="btn-edit" onclick="editName('${doc.id}', '${data.name}')">
+                                ✏️ edit
+                            </button>
+                            
+                            <button class="btn-reaction" onclick="processReaction('${doc.id}', 'likes')">
+                                👍 ${data.likes || 0}
+                            </button>
+                            <button class="btn-reaction" onclick="processReaction('${doc.id}', 'dislikes')">
+                                👎 ${data.dislikes || 0}
+                            </button>
+                        </div>
+                    </div>
+                `;
+            });
+        });
+    </script>
 </body>
 </html>
