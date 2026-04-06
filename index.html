@@ -1,5 +1,4 @@
 <!DOCTYPE html>
-
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
@@ -8,12 +7,10 @@
         body { font-family: 'Inter', sans-serif; background: #f4f7f6; display: flex; flex-direction: column; align-items: center; padding: 20px; }
         .container { width: 100%; max-width: 500px; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
         input { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; }
-        button#mainBtn { background: #007bff; color: white; border: none; padding: 12px; border-radius: 6px; width: 100%; font-weight: 600; cursor: pointer; transition: 0.3s; }
-        button#mainBtn:hover { background: #0056b3; }
-        button#mainBtn:disabled { background: #ccc; cursor: not-allowed; }
-        .post { background: #fff; border: 1px solid #eaeaea; padding: 15px; margin-top: 15px; border-radius: 8px; width: 100%; max-width: 500px; position: relative; }
-        .like-btn { cursor: pointer; border: none; background: #f8f9fa; padding: 5px 12px; border-radius: 20px; font-size: 14px; transition: 0.2s; }
-        .like-btn:hover { background: #e2e6ea; }
+        button#mainBtn { background: #007bff; color: white; border: none; padding: 12px; border-radius: 6px; width: 100%; font-weight: 600; cursor: pointer; }
+        button#mainBtn:disabled { background: #ccc; }
+        .post { background: #fff; border: 1px solid #eaeaea; padding: 15px; margin-top: 15px; border-radius: 8px; width: 100%; max-width: 500px; }
+        .like-btn { cursor: pointer; border: none; background: #f8f9fa; padding: 5px 12px; border-radius: 20px; }
         .time { font-size: 11px; color: #999; float: right; }
     </style>
 </head>
@@ -34,18 +31,16 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
 import { 
     getFirestore, collection, addDoc, query, orderBy, onSnapshot, 
-    serverTimestamp, updateDoc, doc, increment, deleteDoc 
+    updateDoc, doc, increment, deleteDoc 
 } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 
-// CONFIG
 const firebaseConfig = {
   apiKey: "AIzaSyBPnoCcL-TUYTdYPaJunewfsaWIylyDE7w",
   authDomain: "test-da803.firebaseapp.com",
   projectId: "test-da803",
   storageBucket: "test-da803.firebasestorage.app",
   messagingSenderId: "501020279316",
-  appId: "1:501020279316:web:7acd5a849fcd0df318dd01",
-  measurementId: "G-XYN6569D33"
+  appId: "1:501020279316:web:7acd5a849fcd0df318dd01"
 };
 
 const app = initializeApp(firebaseConfig);
@@ -88,8 +83,7 @@ window.processLike = async (id) => {
     });
 };
 
-// ✅ ИСПРАВЛЕНО
-// ПУБЛИКАЦИЯ НОВОЙ ЗАПИСИ С ВАЛИДАЦИЕЙ
+// ADD POST
 document.getElementById('mainBtn').onclick = async () => {
     const btn = document.getElementById('mainBtn');
     const nameInput = document.getElementById('name');
@@ -106,7 +100,7 @@ document.getElementById('mainBtn').onclick = async () => {
         name: nameInput.value,
         email: emailInput.value,
         likes: 0,
-        timestamp: serverTimestamp()
+        timestamp: new Date() // ✅ фикс
     });
 
     nameInput.value = "";
@@ -120,7 +114,15 @@ function renderPosts(posts) {
     feed.innerHTML = "";
 
     posts.forEach((item) => {
-        const date = item.timestamp ? item.timestamp.toDate().toLocaleString() : '...';
+        let date = '...';
+
+        if (item.timestamp) {
+            if (item.timestamp.toDate) {
+                date = item.timestamp.toDate().toLocaleString();
+            } else {
+                date = new Date(item.timestamp).toLocaleString();
+            }
+        }
 
         feed.innerHTML += `
             <div class="post">
