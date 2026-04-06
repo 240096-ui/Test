@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <title>Firebase Form</title>
     <style>
-        body { font-family: sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+        body { font-family: sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; background-color: #f4f4f9; }
         .form-container { background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); width: 300px; }
         input { width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
         button { width: 100%; padding: 10px; background: #0084ff; border: none; color: white; font-weight: bold; cursor: pointer; border-radius: 4px; }
@@ -22,43 +22,45 @@
 </div>
 
 <script type="module">
-    // Firebase Configuration
+    // Фикс: указаны полные ссылки на актуальную версию SDK
     import { initializeApp } from "https://gstatic.com";
     import { getFirestore, collection, addDoc } from "https://gstatic.com";
 
-    // (Add this to script)
-   const firebaseConfig = {
-  apiKey: "AIzaSyBPnoCcL-TUYTdYPaJunewfsaWIylyDE7w",
-  authDomain: "test-da803.firebaseapp.com",
-  projectId: "test-da803",
-  storageBucket: "test-da803.firebasestorage.app",
-  messagingSenderId: "501020279316",
-  appId: "1:501020279316:web:7acd5a849fcd0df318dd01",
-  measurementId: "G-XYN6569D33"
-};
+    // Ваша конфигурация
+    const firebaseConfig = {
+        apiKey: "AIzaSyBPnoCcL-TUYTdYPaJunewfsaWIylyDE7w",
+        authDomain: "://firebaseapp.com",
+        projectId: "test-da803",
+        storageBucket: "test-da803.firebasestorage.app",
+        messagingSenderId: "501020279316",
+        appId: "1:501020279316:web:7acd5a849fcd0df318dd01",
+        measurementId: "G-XYN6569D33"
+    };
 
-    // Initialize
+    // Инициализация
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
-    // Prompt user
-    document.getElementById("contact-form").addEventListener("submit", (e) => {
+    // Обработчик формы
+    document.getElementById("contact-form").addEventListener("submit", async (e) => {
         e.preventDefault();
 
         const userName = document.getElementById("username").value;
         const userEmail = document.getElementById("useremail").value;
 
         try {
-            addDoc(collection(db, "requests"), {
+            // Фикс: добавлен await для асинхронной отправки
+            await addDoc(collection(db, "requests"), {
                 name: userName,
                 email: userEmail,
                 timestamp: new Date()
             });
-            alert("Request sent successfully!");
+            
+            alert("Заявка успешно отправлена!");
             document.getElementById("contact-form").reset();
         } catch (error) {
-            console.error("Error adding document: ", error);
-            alert("Error: check console.");
+            console.error("Ошибка при отправке:", error);
+            alert("Ошибка! Проверьте консоль браузера (F12). Возможно, закрыты правила доступа в Firebase.");
         }
     });
 </script>
