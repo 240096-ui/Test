@@ -21,24 +21,11 @@
         .btn-reaction:hover { background: #e2e6ea; }
         
         .btn-edit {
-            cursor: pointer;
-            background: #e7f3ff; 
-            color: #007bff; 
-            border: 1px solid #c2e0ff;
-            padding: 6px 14px;
-            border-radius: 20px;
-            font-size: 13px;
-            font-weight: 600;
-            transition: 0.3s;
-            display: flex;
-            align-items: center;
-            gap: 5px;
+            cursor: pointer; background: #e7f3ff; color: #007bff; border: 1px solid #c2e0ff;
+            padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 600;
+            transition: 0.3s; display: flex; align-items: center; gap: 5px;
         }
-        .btn-edit:hover {
-            background: #007bff;
-            color: white;
-            border-color: #007bff;
-        }
+        .btn-edit:hover { background: #007bff; color: white; border-color: #007bff; }
     </style>
 </head>
 <body>
@@ -47,38 +34,38 @@
         <h3>Панель управления данными</h3>
         <input type="text" id="name" placeholder="Имя профиля">
         <input type="email" id="email" placeholder="Рабочий Email">
-        <button id="mainBtn">Панель управления постами</button>
+        <button id="mainBtn">Опубликовать пост</button>
     </div>
 
     <div id="feed" style="width: 100%; max-width: 500px;"></div>
 
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js&quot;;
+        // ИСПРАВЛЕНО: Убраны лишние &quot; в конце ссылок
+        import { initializeApp } from "https://gstatic.com";
         import { 
             getFirestore, collection, addDoc, query, orderBy, onSnapshot, 
             serverTimestamp, updateDoc, doc, increment 
-        } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js&quot;;
+        } from "https://gstatic.com";
 
-       const firebaseConfig = {
-  apiKey: "AIzaSyBPnoCcL-TUYTdYPaJunewfsaWIylyDE7w",
-  authDomain: "test-da803.firebaseapp.com",
-  projectId: "test-da803",
-  storageBucket: "test-da803.firebasestorage.app",
-  messagingSenderId: "501020279316",
-  appId: "1:501020279316:web:7acd5a849fcd0df318dd01",
-  measurementId: "G-XYN6569D33"
-};
+        const firebaseConfig = {
+            apiKey: "AIzaSyBPnoCcL-TUYTdYPaJunewfsaWIylyDE7w",
+            authDomain: "test-da803.firebaseapp.com",
+            projectId: "test-da803",
+            storageBucket: "test-da803.firebasestorage.app",
+            messagingSenderId: "501020279316",
+            appId: "1:501020279316:web:7acd5a849fcd0df318dd01",
+            measurementId: "G-XYN6569D33"
+        };
 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-        // ФУНКЦИЯ 1: Изменение счетчиков (лайки и дизлайки) через increment
+        // Привязываем функции к window, чтобы они работали из HTML-атрибутов onclick
         window.processReaction = async (id, field) => {
             const docRef = doc(db, "requests", id);
             try {
                 await updateDoc(docRef, { [field]: increment(1) });
             } catch (e) {
-                console.error("Ошибка обновления счетчика:", e.message);
                 alert("Ошибка: " + e.message);
             }
         };
@@ -90,7 +77,6 @@
                 try {
                     await updateDoc(docRef, { name: newName });
                 } catch (e) {
-                    console.error("Ошибка редактирования:", e.message);
                     alert("Ошибка при сохранении: " + e.message);
                 }
             }
@@ -116,8 +102,8 @@
                 nameInput.value = "";
                 emailInput.value = "";
             } catch (e) {
-                console.error("Ошибка публикации:", e.message);
-                alert("Ошибка сохранения: проверьте Security Rules в Firebase Console!");
+                console.error("Ошибка:", e.message);
+                alert("Ошибка! Проверьте Security Rules в Firebase.");
             }
             btn.disabled = false;
         };
@@ -128,9 +114,12 @@
             feed.innerHTML = "";
             snapshot.forEach((doc) => {
                 const data = doc.data();
+                // Безопасное получение даты
+                const dateStr = data.timestamp ? data.timestamp.toDate().toLocaleString() : "Загрузка...";
+                
                 feed.innerHTML += `
                     <div class="post">
-                        <span class="time">${data.timestamp?.toDate().toLocaleString() || '...'}</span>
+                        <span class="time">${dateStr}</span>
                         <b>${data.name}</b>
                         <p style="margin: 5px 0;">${data.email}</p>
                         
