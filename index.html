@@ -1,107 +1,235 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Private Cloud Chat</title>
-    <style>
-        body { font-family: sans-serif; background: #f0f2f5; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .card { background: white; padding: 40px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); text-align: center; }
-        .btn { background: #4285f4; color: white; border: none; padding: 12px 24px; border-radius: 4px; cursor: pointer; font-size: 16px; }
-        #chat-app { display: none; width: 400px; height: 500px; background: white; border-radius: 12px; flex-direction: column; box-shadow: 0 4px 15px rgba(0,0,0,0.1); overflow: hidden; }
-        #messages { flex: 1; padding: 15px; overflow-y: auto; background: #f9f9f9; display: flex; flex-direction: column; gap: 8px; }
-        .msg { padding: 8px 12px; border-radius: 15px; background: #e1e1e1; align-self: flex-start; max-width: 80%; }
-        .my-msg { align-self: flex-end; background: #4285f4; color: white; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Messenger</title>
+
+<style>
+body {
+  margin:0;
+  font-family: Arial;
+  display:flex;
+  height:100vh;
+}
+
+.sidebar {
+  width:250px;
+  border-right:1px solid #ccc;
+  overflow:auto;
+}
+
+.chat {
+  flex:1;
+  display:flex;
+  flex-direction:column;
+}
+
+.messages {
+  flex:1;
+  padding:10px;
+  overflow:auto;
+}
+
+.msg.me { text-align:right; }
+.msg.other { text-align:left; }
+
+.input {
+  display:flex;
+}
+
+input { flex:1; padding:10px; }
+button { padding:10px; }
+
+.overlay {
+  position:fixed;
+  inset:0;
+  background:#fff;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+}
+</style>
 </head>
+
 <body>
 
-<div id="login-screen" class="card">
-    <h2>Private Cloud Chat</h2>
-    <p id="status">Загрузка библиотек...</p>
-    <button class="btn" id="loginBtn" style="display:none;">Войти через Google</button>
+<div id="loginOverlay" class="overlay">
+  <button onclick="loginGoogle()">Войти через Google</button>
 </div>
 
-<div id="chat-app">
-    <div style="padding:15px; background:#4285f4; color:white; display:flex; justify-content:space-between;">
-        <span id="uName">Чат</span>
-        <button id="logoutBtn" style="color:white; background:none; border:1px solid white; cursor:pointer;">Выход</button>
-    </div>
-    <div id="messages"></div>
-    <div style="padding:10px; display:flex; gap:5px;">
-        <input type="text" id="mInput" style="flex:1; padding:8px;" placeholder="Сообщение...">
-        <button id="sendBtn" style="padding:8px 15px; background:#4285f4; color:white; border:none;">></button>
-    </div>
+<div class="sidebar">
+  <h3 id="myName">...</h3>
+  <button onclick="logout()">Выйти</button>
+  <div id="users"></div>
 </div>
 
-<!-- Загружаем скрипты -->
-<script src="https://gstatic.com"></script>
-<script src="https://gstatic.com"></script>
-<script src="https://gstatic.com"></script>
+<div class="chat">
+  <h3 id="chatTitle">Выбери чат</h3>
+  <div id="messages" class="messages"></div>
 
-<script>
-    const firebaseConfig = {
-        apiKey: "AIzaSyBPnoCcL-TUYTdYPaJunewfsaWIylyDE7w",
-        authDomain: "://firebaseapp.com",
-        projectId: "test-da803",
-        storageBucket: "test-da803.firebasestorage.app",
-        messagingSenderId: "501020279316",
-        appId: "1:501020279316:web:7acd5a849fcd0df318dd01"
-    };
+  <div class="input">
+    <input id="msgInput">
+    <button onclick="sendMessage()">Send</button>
+  </div>
 
-    // ФУНКЦИЯ ЗАПУСКА ПРИЛОЖЕНИЯ
-    function initApp() {
-        if (typeof firebase === 'undefined') {
-            setTimeout(initApp, 500); // Если не загрузилось, ждем еще полсекунды
-            return;
-        }
+  <hr>
 
-        firebase.initializeApp(firebaseConfig);
-        const auth = firebase.auth();
-        const db = firebase.database();
-        const provider = new firebase.auth.GoogleAuthProvider();
+  <input id="postInput" placeholder="Пост...">
+  <button onclick="createPost()">Опубликовать</button>
+  <div id="posts"></div>
+</div>
 
-        document.getElementById('status').innerText = "Готово к работе";
-        document.getElementById('loginBtn').style.display = 'inline-block';
+<script type="module">
 
-        document.getElementById('loginBtn').onclick = () => auth.signInWithRedirect(provider);
-        document.getElementById('logoutBtn').onclick = () => auth.signOut();
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
+import {
+  getAuth, GoogleAuthProvider, signInWithPopup,
+  onAuthStateChanged, signOut
+} from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
 
-        auth.onAuthStateChanged(user => {
-            if (user) {
-                document.getElementById('login-screen').style.display = 'none';
-                document.getElementById('chat-app').style.display = 'flex';
-                document.getElementById('uName').innerText = user.displayName;
-                
-                db.ref('messages').limitToLast(50).on('child_added', snap => {
-                    const data = snap.val();
-                    const div = document.createElement('div');
-                    div.className = 'msg' + (data.uid === user.uid ? ' my-msg' : '');
-                    div.innerHTML = `<b>${data.name}:</b> ${data.text}`;
-                    document.getElementById('messages').appendChild(div);
-                    document.getElementById('messages').scrollTop = 99999;
-                });
-            } else {
-                document.getElementById('login-screen').style.display = 'block';
-                document.getElementById('chat-app').style.display = 'none';
-            }
-        });
+import {
+  getFirestore, collection, addDoc, setDoc, doc,
+  query, onSnapshot, serverTimestamp, where, orderBy
+} from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 
-        document.getElementById('sendBtn').onclick = () => {
-            const inp = document.getElementById('mInput');
-            if (inp.value.trim() && auth.currentUser) {
-                db.ref('messages').push({
-                    name: auth.currentUser.displayName,
-                    text: inp.value,
-                    uid: auth.currentUser.uid
-                });
-                inp.value = '';
-            }
-        };
-    }
+const firebaseConfig = {
+  apiKey: "AIzaSyBPnoCcL-TUYTdYPaJunewfsaWIylyDE7w",
+  authDomain: "test-da803.firebaseapp.com",
+  projectId: "test-da803",
+  storageBucket: "test-da803.firebasestorage.app",
+  messagingSenderId: "501020279316",
+  appId: "1:501020279316:web:7acd5a849fcd0df318dd01",
+  measurementId: "G-XYN6569D33"
+};
 
-    // Запускаем проверку загрузки
-    window.onload = initApp;
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+let currentUser = null;
+let currentChatId = null;
+let unsub = null;
+
+// LOGIN
+window.loginGoogle = async () => {
+  const provider = new GoogleAuthProvider();
+  provider.setCustomParameters({ prompt: "select_account" });
+
+  try {
+    await signInWithPopup(auth, provider);
+  } catch (e) {
+    alert(e.message);
+  }
+};
+
+window.logout = () => signOut(auth);
+
+// AUTH STATE
+onAuthStateChanged(auth, async (user) => {
+  if (user) {
+    currentUser = user;
+    loginOverlay.style.display = "none";
+
+    myName.innerText = user.displayName;
+
+    await setDoc(doc(db, "users", user.uid), {
+      name: user.displayName,
+      online: true,
+      lastSeen: serverTimestamp()
+    }, { merge:true });
+
+    loadUsers();
+    loadPosts();
+  } else {
+    loginOverlay.style.display = "flex";
+  }
+});
+
+// USERS
+function loadUsers(){
+  onSnapshot(collection(db,"users"), snap=>{
+    users.innerHTML="";
+    snap.forEach(u=>{
+      if(u.id===currentUser.uid) return;
+
+      const div=document.createElement("div");
+      div.innerText=u.data().name;
+      div.onclick=()=>openChat(u.id,u.data().name);
+      users.appendChild(div);
+    });
+  });
+}
+
+// OPEN CHAT
+window.openChat = (uid,name)=>{
+  currentChatId=[currentUser.uid,uid].sort().join("_");
+  chatTitle.innerText=name;
+
+  if(unsub) unsub();
+
+  const q=query(
+    collection(db,"messages"),
+    where("chatId","==",currentChatId),
+    orderBy("createdAt")
+  );
+
+  unsub=onSnapshot(q,snap=>{
+    messages.innerHTML="";
+    snap.forEach(m=>{
+      const d=m.data();
+      const div=document.createElement("div");
+      div.className="msg "+(d.sender===currentUser.uid?"me":"other");
+      div.innerText=d.text;
+      messages.appendChild(div);
+    });
+  });
+};
+
+// SEND MESSAGE
+window.sendMessage = async ()=>{
+  const text=msgInput.value.trim();
+  if(!text || !currentChatId) return;
+
+  await addDoc(collection(db,"messages"),{
+    text,
+    sender:currentUser.uid,
+    chatId:currentChatId,
+    createdAt:serverTimestamp()
+  });
+
+  msgInput.value="";
+};
+
+// POSTS
+window.createPost = async ()=>{
+  const text=postInput.value.trim();
+  if(!text) return;
+
+  await addDoc(collection(db,"posts"),{
+    text,
+    author:currentUser.displayName,
+    createdAt:serverTimestamp()
+  });
+
+  postInput.value="";
+};
+
+function loadPosts(){
+  const q=query(collection(db,"posts"),orderBy("createdAt","desc"));
+
+  onSnapshot(q,snap=>{
+    posts.innerHTML="";
+    snap.forEach(p=>{
+      const d=p.data();
+      const div=document.createElement("div");
+      div.innerHTML="<b>"+d.author+"</b>: "+d.text;
+      posts.appendChild(div);
+    });
+  });
+}
+
 </script>
+
 </body>
 </html>
