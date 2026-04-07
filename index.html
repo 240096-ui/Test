@@ -3,83 +3,132 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pro Messenger</title>
+    <title>Messenger PRO | Ultra Edition</title>
     <style>
-        :root { --primary: #0084ff; --bg: #f0f2f5; --text: #1c1e21; }
-        body { margin: 0; font-family: 'Segoe UI', Tahoma, sans-serif; background: var(--bg); height: 100vh; overflow: hidden; }
-        
-        /* Окно входа (не на весь экран) */
-        .login-card { 
-            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            background: white; padding: 40px; border-radius: 12px; 
-            box-shadow: 0 10px 25px rgba(0,0,0,0.1); text-align: center; z-index: 1000;
+        :root {
+            --bg-dark: #1e1f22;
+            --bg-light: #2b2d31;
+            --accent: #5865f2;
+            --text-main: #dbdee1;
+            --text-muted: #949ba4;
+            --white: #ffffff;
         }
-        .login-card h2 { margin-bottom: 20px; color: var(--text); }
-        .hidden { display: none !important; }
 
-        /* Основной интерфейс */
-        .container { display: flex; width: 100%; height: 100vh; }
+        * { box-sizing: border-box; }
+        body { 
+            margin: 0; font-family: 'gg sans', 'Segoe UI', Tahoma, sans-serif; 
+            background: var(--bg-dark); color: var(--text-main); 
+            height: 100vh; display: flex; overflow: hidden; 
+        }
+
+        /* Окно входа */
+        .login-screen {
+            position: fixed; inset: 0; background: var(--bg-dark);
+            display: flex; justify-content: center; align-items: center; z-index: 1000;
+        }
+        .login-box {
+            background: var(--bg-light); padding: 40px; border-radius: 8px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.2); text-align: center; width: 400px;
+        }
+        .login-box h2 { margin: 0 0 10px; color: var(--white); }
+        .login-box p { color: var(--text-muted); margin-bottom: 25px; }
+
+        .btn-google {
+            background: var(--accent); color: white; border: none; padding: 14px 28px;
+            border-radius: 3px; font-size: 16px; font-weight: 600; cursor: pointer;
+            width: 100%; transition: background 0.2s;
+        }
+        .btn-google:hover { background: #4752c4; }
+
+        /* Основной Layout */
+        .app-container { display: flex; width: 100%; height: 100%; display: none; }
+
+        /* Сайдбар */
+        .sidebar { width: 280px; background: var(--bg-light); display: flex; flex-direction: column; }
+        .sidebar-header { 
+            padding: 15px; height: 60px; border-bottom: 1px solid #232428;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .user-list { flex: 1; overflow-y: auto; padding: 10px; }
+        .user-card {
+            padding: 10px; border-radius: 4px; cursor: pointer;
+            display: flex; align-items: center; margin-bottom: 2px;
+        }
+        .user-card:hover { background: rgba(78, 80, 88, 0.3); }
+        .user-card.active { background: rgba(78, 80, 88, 0.6); color: var(--white); }
+        .status { width: 10px; height: 10px; border-radius: 50%; margin-right: 12px; background: #80848e; }
+        .status.online { background: #23a559; }
+
+        /* Чат */
+        .chat-main { flex: 1; display: flex; flex-direction: column; background: #313338; }
+        .chat-header { height: 60px; padding: 0 20px; display: flex; align-items: center; border-bottom: 1px solid #232428; font-weight: bold; }
+        .messages-box { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 15px; }
         
-        .sidebar { width: 300px; background: white; border-right: 1px solid #ddd; display: flex; flex-direction: column; }
-        .sidebar-header { padding: 15px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
-        .user-list { flex: 1; overflow-y: auto; }
-        .user-item { padding: 12px 20px; cursor: pointer; border-bottom: 1px solid #f9f9f9; display: flex; align-items: center; transition: 0.2s; }
-        .user-item:hover { background: #f0f2f5; }
-        .status-dot { width: 10px; height: 10px; border-radius: 50%; margin-right: 10px; background: #ccc; }
-        .online { background: #42b72a; }
+        .message { max-width: 80%; display: flex; flex-direction: column; }
+        .message.me { align-self: flex-end; align-items: flex-end; }
+        .msg-content { padding: 10px 14px; border-radius: 16px; font-size: 15px; line-height: 1.4; }
+        .me .msg-content { background: var(--accent); color: white; border-bottom-right-radius: 2px; }
+        .other .msg-content { background: #383a40; border-bottom-left-radius: 2px; }
 
-        .chat-area { flex: 1; display: flex; flex-direction: column; background: white; }
-        .chat-header { padding: 15px; border-bottom: 1px solid #eee; font-weight: bold; }
-        .messages { flex: 1; padding: 20px; overflow-y: auto; background: #f0f2f5; display: flex; flex-direction: column; gap: 8px; }
-        .msg { max-width: 70%; padding: 8px 14px; border-radius: 18px; font-size: 14px; line-height: 1.4; }
-        .msg.me { align-self: flex-end; background: var(--primary); color: white; border-bottom-right-radius: 2px; }
-        .msg.other { align-self: flex-start; background: white; border-bottom-left-radius: 2px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
+        /* Лента */
+        .news-feed { width: 300px; background: var(--bg-light); border-left: 1px solid #232428; display: flex; flex-direction: column; }
+        .feed-header { padding: 15px; font-weight: bold; border-bottom: 1px solid #232428; }
+        .feed-content { flex: 1; overflow-y: auto; padding: 10px; }
+        .post { background: #383a40; padding: 12px; border-radius: 8px; margin-bottom: 10px; font-size: 14px; }
+        .post b { color: var(--accent); display: block; margin-bottom: 4px; }
 
-        .posts-area { width: 320px; background: #f8f9fa; border-left: 1px solid #ddd; display: flex; flex-direction: column; }
-        .posts-list { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; }
-        .post-card { background: white; padding: 12px; border-radius: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); font-size: 13px; }
-        .post-author { font-weight: bold; color: var(--primary); margin-bottom: 4px; display: block; }
+        /* Ввод */
+        .input-area { padding: 20px; background: #313338; }
+        .input-wrapper { 
+            background: #383a40; border-radius: 8px; padding: 10px 15px;
+            display: flex; align-items: center; gap: 10px;
+        }
+        input { 
+            background: transparent; border: none; color: var(--text-main);
+            flex: 1; outline: none; font-size: 15px; 
+        }
+        .btn-send { background: var(--accent); border: none; color: white; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-weight: bold; }
 
-        .input-box { padding: 15px; display: flex; gap: 10px; background: white; border-top: 1px solid #eee; }
-        input { flex: 1; padding: 10px 15px; border: 1px solid #ddd; border-radius: 20px; outline: none; }
-        button { padding: 8px 18px; background: var(--primary); color: white; border: none; border-radius: 20px; cursor: pointer; font-weight: 600; }
-        button.secondary { background: #e4e6eb; color: #050505; font-size: 11px; }
+        .hidden { display: none !important; }
     </style>
 </head>
 <body>
 
-<!-- Центрированное окно входа -->
-<div id="loginOverlay" class="login-card">
-    <h2>Messenger PRO</h2>
-    <button id="googleBtn" style="padding: 15px 30px;">Войти через Google</button>
+<div id="loginOverlay" class="login-screen">
+    <div class="login-box">
+        <h2>С возвращением!</h2>
+        <p>Мы так рады, что вы снова с нами!</p>
+        <button id="googleBtn" class="btn-google">Войти через Google</button>
+    </div>
 </div>
 
-<!-- Основной контент (скрыт до логина) -->
-<div id="mainContent" class="container hidden">
+<div id="appContainer" class="app-container">
     <div class="sidebar">
         <div class="sidebar-header">
-            <span id="myName" style="font-weight: bold;">Аккаунт</span>
-            <button id="logoutBtn" class="secondary">Выйти</button>
+            <span id="myName" style="font-weight: bold; font-size: 14px;">Пользователь</span>
+            <button id="logoutBtn" style="background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:12px;">Выйти</button>
         </div>
         <div class="user-list" id="usersList"></div>
     </div>
 
-    <div class="chat-area">
-        <div class="chat-header" id="chatTitle">Выберите чат</div>
-        <div class="messages" id="messagesBox"></div>
-        <div class="input-box">
-            <input type="text" id="msgInput" placeholder="Напишите сообщение...">
-            <button id="sendBtn">Отправить</button>
+    <div class="chat-main">
+        <div class="chat-header" id="chatTitle">Выберите, кому написать</div>
+        <div class="messages-box" id="messagesBox"></div>
+        <div class="input-area">
+            <div class="input-wrapper">
+                <input type="text" id="msgInput" placeholder="Написать сообщение...">
+                <button id="sendBtn" class="btn-send">ОТПРАВИТЬ</button>
+            </div>
         </div>
     </div>
 
-    <div class="posts-area">
-        <div style="padding:15px; font-weight:bold; border-bottom:1px solid #ddd;">Публичная лента</div>
-        <div class="input-box" style="padding: 10px;">
-            <input type="text" id="postInput" placeholder="Что нового?">
-            <button id="postBtn" style="padding: 5px 12px;">+</button>
+    <div class="news-feed">
+        <div class="feed-header">Публичная лента</div>
+        <div style="padding: 10px;">
+            <input type="text" id="postInput" placeholder="Что нового?" style="background:#1e1f22; width:100%; padding:10px; border-radius:4px; margin-bottom:10px;">
+            <button id="postBtn" class="btn-send" style="width:100%">Опубликовать</button>
         </div>
-        <div class="posts-list" id="postsBox"></div>
+        <div class="feed-content" id="postsBox"></div>
     </div>
 </div>
 
@@ -105,29 +154,31 @@ let currentUser = null;
 let currentChatId = null;
 let unsubMessages = null;
 
-// --- ПРИВЯЗКА КНОПОК ЧЕРЕЗ JS (Так надежнее для модулей) ---
-document.getElementById('googleBtn').onclick = () => {
+// --- СОБЫТИЯ (Ставим через JS, чтобы точно сработало) ---
+const googleBtn = document.getElementById('googleBtn');
+googleBtn.onclick = async () => {
+    console.log("Попытка входа...");
     const provider = new GoogleAuthProvider();
-    signInWithPopup(auth, provider).catch(e => alert("Ошибка входа: " + e.code));
+    try {
+        await signInWithPopup(auth, provider);
+    } catch (e) {
+        console.error("Критическая ошибка:", e);
+        alert("Блокировка Firebase! Зайди в консоль и добавь домен в Authorized Domains. Код: " + e.code);
+    }
 };
 
 document.getElementById('logoutBtn').onclick = () => signOut(auth);
-
 document.getElementById('sendBtn').onclick = sendMessage;
-document.getElementById('msgInput').onkeypress = (e) => { if(e.key === 'Enter') sendMessage(); };
-
 document.getElementById('postBtn').onclick = createPost;
+document.getElementById('msgInput').onkeydown = (e) => { if(e.key === 'Enter') sendMessage(); };
 
-// --- ЛОГИКА СОСТОЯНИЯ ---
+// --- ГЛАВНЫЙ ЦИКЛ ---
 onAuthStateChanged(auth, async (user) => {
-    const overlay = document.getElementById("loginOverlay");
-    const main = document.getElementById("mainContent");
-    
     if (user) {
         currentUser = user;
-        overlay.classList.add("hidden");
-        main.classList.remove("hidden");
-        document.getElementById("myName").innerText = user.displayName;
+        document.getElementById('loginOverlay').classList.add('hidden');
+        document.getElementById('appContainer').style.display = 'flex';
+        document.getElementById('myName').innerText = user.displayName;
         
         await setDoc(doc(db, "users", user.uid), {
             name: user.displayName,
@@ -138,15 +189,13 @@ onAuthStateChanged(auth, async (user) => {
         loadUsers();
         loadPosts();
     } else {
-        currentUser = null;
-        overlay.classList.remove("hidden");
-        main.classList.add("hidden");
+        document.getElementById('loginOverlay').classList.remove('hidden');
+        document.getElementById('appContainer').style.display = 'none';
     }
 });
 
-// --- ФУНКЦИИ ---
 async function sendMessage() {
-    const input = document.getElementById("msgInput");
+    const input = document.getElementById('msgInput');
     if (!input.value.trim() || !currentChatId) return;
     await addDoc(collection(db, "messages"), {
         chatId: currentChatId,
@@ -158,7 +207,7 @@ async function sendMessage() {
 }
 
 async function createPost() {
-    const input = document.getElementById("postInput");
+    const input = document.getElementById('postInput');
     if (!input.value.trim()) return;
     await addDoc(collection(db, "posts"), {
         author: currentUser.displayName,
@@ -176,8 +225,8 @@ function loadUsers() {
             if (uDoc.id === currentUser.uid) return;
             const data = uDoc.data();
             const div = document.createElement("div");
-            div.className = "user-item";
-            div.innerHTML = `<span class="status-dot ${data.online ? 'online' : ''}"></span> ${data.name}`;
+            div.className = `user-card ${currentChatId && currentChatId.includes(uDoc.id) ? 'active' : ''}`;
+            div.innerHTML = `<span class="status ${data.online ? 'online' : ''}"></span> ${data.name}`;
             div.onclick = () => openChat(uDoc.id, data.name);
             list.appendChild(div);
         });
@@ -186,18 +235,22 @@ function loadUsers() {
 
 function openChat(otherUid, name) {
     currentChatId = [currentUser.uid, otherUid].sort().join("_");
-    document.getElementById("chatTitle").innerText = "Чат с " + name;
-    if (unsubMessages) unsubMessages();
+    document.getElementById("chatTitle").innerText = name;
     
+    // Обновляем список чтобы выделить активный чат
+    loadUsers();
+
+    if (unsubMessages) unsubMessages();
     const q = query(collection(db, "messages"), where("chatId", "==", currentChatId), orderBy("createdAt", "asc"));
+    
     unsubMessages = onSnapshot(q, (snap) => {
         const box = document.getElementById("messagesBox");
         box.innerHTML = "";
         snap.forEach(m => {
             const d = m.data();
             const div = document.createElement("div");
-            div.className = `msg ${d.senderId === currentUser.uid ? 'me' : 'other'}`;
-            div.innerText = d.text;
+            div.className = `message ${d.senderId === currentUser.uid ? 'me' : 'other'}`;
+            div.innerHTML = `<div class="msg-content">${d.text}</div>`;
             box.appendChild(div);
         });
         box.scrollTop = box.scrollHeight;
@@ -212,8 +265,8 @@ function loadPosts() {
         snap.forEach(p => {
             const d = p.data();
             const div = document.createElement("div");
-            div.className = "post-card";
-            div.innerHTML = `<span class="post-author">${d.author}</span>${d.text}`;
+            div.className = "post";
+            div.innerHTML = `<b>${d.author}</b> ${d.text}`;
             box.appendChild(div);
         });
     });
