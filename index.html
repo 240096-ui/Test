@@ -5,28 +5,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pro Messenger & Posts</title>
     <style>
-        :root {
-            --bg: #f0f2f5;
-            --sidebar: #ffffff;
-            --primary: #0084ff;
-            --text: #1c1e21;
-        }
-        body { margin:0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg); color: var(--text); height: 100vh; display: flex; overflow: hidden; }
-        
-        /* Layout */
+        :root { --bg: #f0f2f5; --sidebar: #ffffff; --primary: #0084ff; --text: #1c1e21; }
+        body { margin:0; font-family: 'Segoe UI', Tahoma, sans-serif; background: var(--bg); color: var(--text); height: 100vh; display: flex; overflow: hidden; }
         .container { display: flex; width: 100%; height: 100%; }
         
-        /* Sidebar - Users */
         .sidebar { width: 300px; background: var(--sidebar); border-right: 1px solid #ddd; display: flex; flex-direction: column; }
         .sidebar-header { padding: 20px; border-bottom: 1px solid #eee; text-align: center; }
         .user-list { flex: 1; overflow-y: auto; }
-        .user-item { padding: 15px 20px; cursor: pointer; border-bottom: 1px solid #f9f9f9; transition: 0.2s; display: flex; align-items: center; }
+        .user-item { padding: 15px 20px; cursor: pointer; border-bottom: 1px solid #f9f9f9; display: flex; align-items: center; transition: 0.2s; }
         .user-item:hover { background: #f0f2f5; }
-        .user-item.active { background: #e7f3ff; border-left: 4px solid var(--primary); }
-        .status-dot { width: 10px; height: 10px; border-radius: 50%; margin-right: 10px; }
+        .status-dot { width: 10px; height: 10px; border-radius: 50%; margin-right: 10px; background: #ccc; }
         .online { background: #42b72a; }
         
-        /* Main Chat Area */
         .chat-area { flex: 1; display: flex; flex-direction: column; background: #fff; border-right: 1px solid #ddd; }
         .chat-header { padding: 15px; background: #fff; border-bottom: 1px solid #eee; font-weight: bold; }
         .messages { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; background: #f0f2f5; }
@@ -34,68 +24,61 @@
         .msg.me { align-self: flex-end; background: var(--primary); color: white; border-bottom-right-radius: 2px; }
         .msg.other { align-self: flex-start; background: #fff; color: var(--text); border-bottom-left-radius: 2px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
         
-        /* Inputs */
         .input-box { padding: 15px; display: flex; gap: 10px; background: #fff; border-top: 1px solid #eee; }
         input { flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 20px; outline: none; }
         button { padding: 8px 20px; background: var(--primary); color: white; border: none; border-radius: 20px; cursor: pointer; font-weight: 600; }
-        button:disabled { background: #ccc; }
 
-        /* Posts Section */
         .posts-area { width: 350px; display: flex; flex-direction: column; background: #f0f2f5; }
         .posts-header { padding: 15px; font-weight: bold; background: #fff; border-bottom: 1px solid #ddd; }
         .posts-list { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 15px; }
         .post-card { background: #fff; padding: 15px; border-radius: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
         .post-author { font-weight: bold; font-size: 13px; color: var(--primary); margin-bottom: 5px; display: block; }
         
-        .login-overlay { position: fixed; inset: 0; background: rgba(255,255,255,0.9); display: flex; justify-content: center; align-items: center; z-index: 100; }
+        .login-overlay { position: fixed; inset: 0; background: white; display: flex; justify-content: center; align-items: center; z-index: 1000; }
     </style>
 </head>
 <body>
 
 <div id="loginOverlay" class="login-overlay">
-    <button onclick="loginGoogle()" style="padding: 20px 40px; font-size: 18px;">Войти через Google</button>
+    <button id="googleBtn" style="padding: 20px 40px; font-size: 18px;">Войти через Google</button>
 </div>
 
 <div class="container">
-    <!-- Список пользователей -->
     <div class="sidebar">
         <div class="sidebar-header">
             <h3 id="myName">Мессенджер</h3>
-            <button onclick="logout()" style="background: #e4e6eb; color: #050505; font-size: 12px; padding: 5px 10px;">Выйти</button>
+            <button id="logoutBtn" style="background: #e4e6eb; color: #050505; font-size: 12px; padding: 5px 10px; border: none; border-radius: 5px; cursor: pointer;">Выйти</button>
         </div>
         <div class="user-list" id="usersList"></div>
     </div>
 
-    <!-- Чат -->
     <div class="chat-area">
         <div class="chat-header" id="chatTitle">Выберите, кому написать</div>
         <div class="messages" id="messagesBox"></div>
         <div class="input-box">
             <input type="text" id="msgInput" placeholder="Напишите сообщение...">
-            <button onclick="sendMessage()">Отправить</button>
+            <button id="sendMsgBtn">Отправить</button>
         </div>
     </div>
 
-    <!-- Посты -->
     <div class="posts-area">
         <div class="posts-header">Публичные посты</div>
         <div class="input-box" style="border-bottom: 1px solid #ddd;">
             <input type="text" id="postInput" placeholder="Что нового?">
-            <button onclick="createPost()">Опубликовать</button>
+            <button id="createPostBtn">OK</button>
         </div>
         <div class="posts-list" id="postsBox"></div>
     </div>
 </div>
 
 <script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
-import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
-import { getFirestore, collection, addDoc, setDoc, doc, query, orderBy, onSnapshot, serverTimestamp, where } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+import { initializeApp } from "https://gstatic.com";
+import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "https://gstatic.com";
+import { getFirestore, collection, addDoc, setDoc, doc, query, orderBy, onSnapshot, serverTimestamp, where } from "https://gstatic.com";
 
-// Конфигурация (твоя)
 const firebaseConfig = {
   apiKey: "AIzaSyBPnoCcL-TUYTdYPaJunewfsaWIylyDE7w",
-  authDomain: "test-da803.firebaseapp.com",
+  authDomain: "://firebaseapp.com",
   projectId: "test-da803",
   storageBucket: "test-da803.firebasestorage.app",
   messagingSenderId: "501020279316",
@@ -110,16 +93,20 @@ let currentUser = null;
 let currentChatId = null;
 let unsubMessages = null;
 
-// --- AUTH ---
-window.loginGoogle = async () => {
+// --- ПРИВЯЗКА СОБЫТИЙ (Глобально для модулей) ---
+document.getElementById('googleBtn').addEventListener('click', async () => {
     const provider = new GoogleAuthProvider();
-    try {
-        await signInWithPopup(auth, provider);
-    } catch (e) { console.error("Ошибка входа:", e); }
-};
+    try { await signInWithPopup(auth, provider); } catch (e) { console.error(e); alert("Ошибка: " + e.code); }
+});
 
-window.logout = () => signOut(auth);
+document.getElementById('logoutBtn').addEventListener('click', () => signOut(auth));
 
+document.getElementById('sendMsgBtn').addEventListener('click', sendMessage);
+document.getElementById('msgInput').addEventListener('keypress', (e) => { if (e.key === 'Enter') sendMessage(); });
+
+document.getElementById('createPostBtn').addEventListener('click', createPost);
+
+// --- AUTH ---
 onAuthStateChanged(auth, async (user) => {
     const overlay = document.getElementById("loginOverlay");
     if (user) {
@@ -127,7 +114,6 @@ onAuthStateChanged(auth, async (user) => {
         overlay.style.display = "none";
         document.getElementById("myName").innerText = user.displayName;
         
-        // Сохраняем юзера в базу
         await setDoc(doc(db, "users", user.uid), {
             name: user.displayName,
             photo: user.photoURL,
@@ -145,8 +131,7 @@ onAuthStateChanged(auth, async (user) => {
 
 // --- USERS ---
 function loadUsers() {
-    const q = query(collection(db, "users"));
-    onSnapshot(q, (snap) => {
+    onSnapshot(collection(db, "users"), (snap) => {
         const list = document.getElementById("usersList");
         list.innerHTML = "";
         snap.forEach(uDoc => {
@@ -161,20 +146,28 @@ function loadUsers() {
     });
 }
 
-// --- CHAT LOGIC ---
-window.openChat = (otherUid, name) => {
-    // Генерируем уникальный ID для пары пользователей
+// --- MESSAGES ---
+async function sendMessage() {
+    const input = document.getElementById("msgInput");
+    const text = input.value.trim();
+    if (!text || !currentChatId) return;
+
+    await addDoc(collection(db, "messages"), {
+        chatId: currentChatId,
+        senderId: currentUser.uid,
+        text: text,
+        createdAt: serverTimestamp()
+    });
+    input.value = "";
+}
+
+function openChat(otherUid, name) {
     currentChatId = [currentUser.uid, otherUid].sort().join("_");
     document.getElementById("chatTitle").innerText = "Чат с " + name;
     
-    // Сброс старой подписки на сообщения, если была
     if (unsubMessages) unsubMessages();
     
-    const q = query(
-        collection(db, "messages"),
-        where("chatId", "==", currentChatId),
-        orderBy("createdAt", "asc")
-    );
+    const q = query(collection(db, "messages"), where("chatId", "==", currentChatId), orderBy("createdAt", "asc"));
 
     unsubMessages = onSnapshot(q, (snap) => {
         const box = document.getElementById("messagesBox");
@@ -188,6 +181,36 @@ window.openChat = (otherUid, name) => {
         });
         box.scrollTop = box.scrollHeight;
     });
-};
+}
 
-window
+// --- POSTS ---
+async function createPost() {
+    const input = document.getElementById("postInput");
+    const text = input.value.trim();
+    if (!text) return;
+
+    await addDoc(collection(db, "posts"), {
+        author: currentUser.displayName,
+        text: text,
+        createdAt: serverTimestamp()
+    });
+    input.value = "";
+}
+
+function loadPosts() {
+    const q = query(collection(db, "posts"), orderBy("createdAt", "desc"));
+    onSnapshot(q, (snap) => {
+        const box = document.getElementById("postsBox");
+        box.innerHTML = "";
+        snap.forEach(pDoc => {
+            const data = pDoc.data();
+            const div = document.createElement("div");
+            div.className = "post-card";
+            div.innerHTML = `<span class="post-author">${data.author}</span><div>${data.text}</div>`;
+            box.appendChild(div);
+        });
+    });
+}
+</script>
+</body>
+</html>
