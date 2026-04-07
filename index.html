@@ -4,20 +4,17 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Private Cloud Chat</title>
-    <!-- Подключаем Firebase старым надежным способом -->
-    <script src="https://gstatic.com"></script>
-    <script src="https://gstatic.com"></script>
-    <script src="https://gstatic.com"></script>
     <style>
         body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #f0f2f5; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
         #login-screen { background: white; padding: 40px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); text-align: center; }
         .google-btn { background: #4285f4; color: white; border: none; padding: 12px 24px; border-radius: 4px; font-size: 16px; font-weight: 500; cursor: pointer; }
-        #chat-app { display: none; width: 400px; height: 500px; background: white; border-radius: 12px; flex-direction: column; box-shadow: 0 4px 15px rgba(0,0,0,0.1); overflow: hidden; }
+        #chat-app { display: none; width: 400px; height: 550px; background: white; border-radius: 12px; flex-direction: column; box-shadow: 0 4px 15px rgba(0,0,0,0.1); overflow: hidden; }
         #messages { flex: 1; padding: 15px; overflow-y: auto; background: #f9f9f9; display: flex; flex-direction: column; gap: 8px; }
-        .msg { padding: 8px 12px; border-radius: 15px; background: #e8e8e8; max-width: 80%; font-size: 14px; }
+        .msg { padding: 8px 12px; border-radius: 15px; background: #e1e1e1; max-width: 80%; font-size: 14px; word-wrap: break-word; }
         .my-msg { align-self: flex-end; background: #4285f4; color: white; }
-        .input-area { padding: 10px; display: flex; gap: 5px; border-top: 1px solid #eee; }
-        input { flex: 1; padding: 8px; border: 1px solid #ddd; border-radius: 4px; outline: none; }
+        .input-area { padding: 15px; display: flex; gap: 8px; border-top: 1px solid #eee; }
+        input { flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 20px; outline: none; }
+        #sendBtn { background: #4285f4; color: white; border: none; width: 40px; height: 40px; border-radius: 50%; cursor: pointer; }
     </style>
 </head>
 <body>
@@ -28,19 +25,23 @@
 </div>
 
 <div id="chat-app">
-    <div style="padding: 15px; background: #4285f4; color: white; display: flex; justify-content: space-between;">
-        <span id="userName">Чат</span>
-        <button onclick="firebase.auth().signOut()" style="background:none; border:none; color:white; cursor:pointer;">Выход</button>
+    <div style="padding: 15px; background: #4285f4; color: white; display: flex; justify-content: space-between; align-items: center;">
+        <strong id="userName">Загрузка...</strong>
+        <button id="logoutBtn" style="background:none; border:1px solid white; color:white; border-radius:4px; cursor:pointer; font-size: 12px; padding: 4px 8px;">Выход</button>
     </div>
     <div id="messages"></div>
     <div class="input-area">
-        <input type="text" id="msgInput" placeholder="Сообщение...">
-        <button id="sendBtn" style="background:#4285f4; color:white; border:none; padding:8px 15px; border-radius:4px; cursor:pointer;">></button>
+        <input type="text" id="msgInput" placeholder="Напишите сообщение...">
+        <button id="sendBtn">></button>
     </div>
 </div>
 
+<!-- Подключаем скрипты в самом конце body -->
+<script src="https://gstatic.com"></script>
+<script src="https://gstatic.com"></script>
+<script src="https://gstatic.com"></script>
+
 <script>
-    // Твой конфиг
     const firebaseConfig = {
         apiKey: "AIzaSyBPnoCcL-TUYTdYPaJunewfsaWIylyDE7w",
         authDomain: "://firebaseapp.com",
@@ -50,60 +51,62 @@
         appId: "1:501020279316:web:7acd5a849fcd0df318dd01"
     };
 
-    // Инициализация
-    firebase.initializeApp(firebaseConfig);
-    const auth = firebase.auth();
-    const db = firebase.database();
-    const provider = new firebase.auth.GoogleAuthProvider();
+    // Функция инициализации чата (запустится когда Firebase загрузится)
+    function startApp() {
+        if (typeof firebase === 'undefined') return;
+        
+        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+        
+        const auth = firebase.auth();
+        const db = firebase.database();
+        const provider = new firebase.auth.GoogleAuthProvider();
 
-    // Элементы
-    const loginBtn = document.getElementById('loginBtn');
-    const sendBtn = document.getElementById('sendBtn');
-    const msgInput = document.getElementById('msgInput');
-    const messagesDiv = document.getElementById('messages');
+        const loginBtn = document.getElementById('loginBtn');
+        const logoutBtn = document.getElementById('logoutBtn');
+        const sendBtn = document.getElementById('sendBtn');
+        const msgInput = document.getElementById('msgInput');
+        const messagesDiv = document.getElementById('messages');
 
-    // Вход
-    loginBtn.onclick = () => {
-        auth.signInWithPopup(provider).catch(err => alert("Ошибка: " + err.message));
-    };
+        loginBtn.onclick = () => auth.signInWithPopup(provider).catch(e => alert(e.message));
+        logoutBtn.onclick = () => auth.signOut();
 
-    // Слушатель состояния
-    auth.onAuthStateChanged(user => {
-        if (user) {
-            document.getElementById('login-screen').style.display = 'none';
-            document.getElementById('chat-app').style.display = 'flex';
-            document.getElementById('userName').innerText = user.displayName;
-            loadMessages();
-        } else {
-            document.getElementById('login-screen').style.display = 'block';
-            document.getElementById('chat-app').style.display = 'none';
-        }
-    });
-
-    // Отправка
-    sendBtn.onclick = () => {
-        if (msgInput.value.trim()) {
-            db.ref('messages').push({
-                name: auth.currentUser.displayName,
-                text: msgInput.value,
-                uid: auth.currentUser.uid
-            });
-            msgInput.value = '';
-        }
-    };
-
-    // Загрузка
-    function loadMessages() {
-        db.ref('messages').limitToLast(50).on('child_added', (snapshot) => {
-            const data = snapshot.val();
-            const div = document.createElement('div');
-            div.className = 'msg' + (data.uid === auth.currentUser.uid ? ' my-msg' : '');
-            div.innerHTML = `<b>${data.name}:</b> ${data.text}`;
-            messagesDiv.appendChild(div);
-            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        auth.onAuthStateChanged(user => {
+            if (user) {
+                document.getElementById('login-screen').style.display = 'none';
+                document.getElementById('chat-app').style.display = 'flex';
+                document.getElementById('userName').innerText = user.displayName;
+                
+                // Загрузка сообщений
+                db.ref('messages').off();
+                db.ref('messages').limitToLast(50).on('child_added', snap => {
+                    const data = snap.val();
+                    const div = document.createElement('div');
+                    div.className = 'msg' + (data.uid === user.uid ? ' my-msg' : '');
+                    div.innerHTML = `<strong>${data.name}</strong><br>${data.text}`;
+                    messagesDiv.appendChild(div);
+                    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+                });
+            } else {
+                document.getElementById('login-screen').style.display = 'block';
+                document.getElementById('chat-app').style.display = 'none';
+            }
         });
-    }
-</script>
 
+        sendBtn.onclick = () => {
+            const text = msgInput.value.trim();
+            if (text && auth.currentUser) {
+                db.ref('messages').push({
+                    name: auth.currentUser.displayName,
+                    text: text,
+                    uid: auth.currentUser.uid
+                });
+                msgInput.value = '';
+            }
+        };
+    }
+
+    // Ждем полной загрузки страницы и скриптов
+    window.onload = startApp;
+</script>
 </body>
 </html>
