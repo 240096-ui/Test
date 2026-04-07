@@ -2,48 +2,60 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<title>Messenger</title>
-
+<title>Messenger App</title>
 <style>
 body {
     margin: 0;
-    font-family: system-ui;
+    font-family: Arial, sans-serif;
     display: flex;
     height: 100vh;
+    background: #e9ebee;
 }
 
 /* SIDEBAR */
 .sidebar {
-    width: 320px;
-    background: #17212b;
+    width: 280px;
+    background: #2f3640;
     color: white;
     display: flex;
     flex-direction: column;
 }
 
-.header {
+.sidebar-header {
     padding: 15px;
     font-weight: bold;
-    border-bottom: 1px solid #222;
+    border-bottom: 1px solid #444;
+    text-align: center;
+}
+
+.login-btn {
+    background: #4285f4;
+    color: white;
+    border: none;
+    padding: 8px;
+    cursor: pointer;
+    width: 90%;
+    margin: 10px auto;
+    font-size: 14px;
 }
 
 .user {
-    padding: 12px;
+    padding: 10px;
+    border-bottom: 1px solid #444;
     cursor: pointer;
-    border-bottom: 1px solid #222;
 }
 
 .user:hover {
-    background: #1f2a36;
+    background: #3b3b3b;
 }
 
 .status {
-    font-size: 12px;
-    color: #aaa;
+    font-size: 11px;
+    color: #ccc;
 }
 
-/* CHAT */
-.chat {
+/* MAIN */
+.main {
     flex: 1;
     display: flex;
     flex-direction: column;
@@ -51,90 +63,99 @@ body {
 
 .chat-header {
     padding: 15px;
-    border-bottom: 1px solid #ddd;
+    background: #fff;
+    border-bottom: 1px solid #ccc;
+    font-weight: bold;
 }
 
 .messages {
     flex: 1;
     padding: 15px;
     overflow-y: auto;
-    background: #e6ecf0;
+    background: #f5f5f5;
 }
 
 .msg {
-    margin: 5px 0;
-    max-width: 60%;
     padding: 10px;
     border-radius: 10px;
+    margin: 5px 0;
+    max-width: 60%;
 }
 
 .me {
-    background: #2b5278;
+    background: #4a90e2;
     color: white;
     margin-left: auto;
 }
 
 .other {
-    background: white;
+    background: #fff;
+    border: 1px solid #ddd;
 }
 
-.input {
+.inputBox {
     display: flex;
-    border-top: 1px solid #ddd;
+    border-top: 1px solid #ccc;
+    background: #fff;
 }
 
-.input input {
+.inputBox input {
     flex: 1;
-    padding: 15px;
+    padding: 12px;
     border: none;
+    font-size: 14px;
 }
 
-.input button {
-    padding: 15px;
+.inputBox button {
+    padding: 12px 18px;
     border: none;
-    background: #2b5278;
+    background: #4a90e2;
     color: white;
+    cursor: pointer;
 }
 </style>
 </head>
-
 <body>
 
 <div class="sidebar">
-    <div class="header">
-        <input id="name" placeholder="Твое имя" style="width:100%; padding:8px;">
-        <button onclick="login()">Войти</button>
-    </div>
-
+    <div class="sidebar-header">Пользователи</div>
+    <button class="login-btn" onclick="googleLogin()">Войти через Google</button>
     <div id="users"></div>
 </div>
 
-<div class="chat">
-    <div class="chat-header" id="chatTitle">Выбери чат</div>
+<div class="main">
+    <div class="chat-header" id="chatTitle">Выберите чат</div>
     <div class="messages" id="messages"></div>
-
-    <div class="input">
-        <input id="text" placeholder="Сообщение...">
-        <button onclick="send()">▶</button>
+    <div class="inputBox">
+        <input id="msgInput" placeholder="Введите сообщение...">
+        <button onclick="sendMessage()">Отправить</button>
     </div>
 </div>
 
 <script type="module">
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
+import {
+    getAuth,
+    GoogleAuthProvider,
+    signInWithPopup,
+    onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
 
 import {
     getFirestore,
     collection,
-    addDoc,
+    query,
+    where,
     onSnapshot,
+    addDoc,
     doc,
     setDoc,
     serverTimestamp,
-    query,
     orderBy
 } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 
+// 🔥 Вставь свой Firebase config
 const firebaseConfig = {
   apiKey: "AIzaSyBPnoCcL-TUYTdYPaJunewfsaWIylyDE7w",
   authDomain: "test-da803.firebaseapp.com",
@@ -146,126 +167,114 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
 const db = getFirestore(app);
 
 let currentUser = null;
-let currentChat = null;
+let currentChatId = null;
 
-// LOGIN (простой и стабильный)
-window.login = async () => {
-    const name = document.getElementById("name").value.trim();
-    if (!name) return alert("Введи имя");
-
-    currentUser = name;
-
-    await setDoc(doc(db, "users", name), {
-        name,
-        online: true,
-        lastSeen: serverTimestamp()
-    });
-
-    loadUsers();
+// 📌 Вход через Google
+window.googleLogin = async () => {
+    const provider = new GoogleAuthProvider();
+    await signInWithPopup(auth, provider);
 };
 
-// USERS
+// 👤 Отслеживание входа
+onAuthStateChanged(auth, async (user) => {
+    if (!user) return;
+    currentUser = {
+        uid: user.uid,
+        name: user.displayName,
+        email: user.email,
+        photo: user.photoURL
+    };
+
+    await setDoc(doc(db, "users", currentUser.uid), {
+        name: currentUser.name,
+        online: true,
+        lastSeen: serverTimestamp()
+    }, { merge: true });
+
+    loadUsers();
+});
+
+// 📋 Список пользователей
 function loadUsers() {
+    const q = query(collection(db, "users"));
+    onSnapshot(q, (snap) => {
+        const container = document.getElementById("users");
+        container.innerHTML = "";
+        snap.forEach(u => {
+            const data = u.data();
+            const id = u.id;
 
-    onSnapshot(collection(db, "users"), (snap) => {
-
-        const list = document.getElementById("users");
-        list.innerHTML = "";
-
-        snap.forEach(docItem => {
-
-            const u = docItem.data();
-            if (u.name === currentUser) return;
+            if (!currentUser || id === currentUser.uid) return;
 
             const div = document.createElement("div");
             div.className = "user";
-
             div.innerHTML = `
-                ${u.name}
-                <div class="status">
-                    ${u.online ? "online" : "offline"}
-                </div>
+                ${data.name}
+                <div class="status">${data.online ? "🟢 online" : "🔴 offline"}</div>
             `;
-
-            div.onclick = () => openChat(u.name);
-
-            list.appendChild(div);
+            div.onclick = () => openChat(id, data.name);
+            container.appendChild(div);
         });
     });
 }
 
-// OPEN CHAT
-function openChat(user) {
-    currentChat = [currentUser, user].sort().join("_");
-    document.getElementById("chatTitle").innerText = user;
-
+// 🗨️ Открыть чат
+function openChat(otherUid, otherName) {
+    currentChatId = [currentUser.uid, otherUid].sort().join("_");
+    document.getElementById("chatTitle").innerText = otherName;
     loadMessages();
 }
 
-// SEND
-window.send = async () => {
-
-    const text = document.getElementById("text").value;
-
-    if (!text || !currentChat) return;
+// ✉️ Отправка сообщения
+window.sendMessage = async () => {
+    const text = document.getElementById("msgInput").value.trim();
+    if (!text || !currentChatId) return;
 
     await addDoc(collection(db, "messages"), {
-        chatId: currentChat,
-        sender: currentUser,
+        chatId: currentChatId,
+        sender: currentUser.uid,
         text,
         createdAt: serverTimestamp()
     });
 
-    document.getElementById("text").value = "";
+    document.getElementById("msgInput").value = "";
 };
 
-// LOAD
+// 📨 Загрузка сообщений
 function loadMessages() {
-
-    const q = query(collection(db, "messages"), orderBy("createdAt"));
+    const q = query(
+        collection(db, "messages"),
+        where("chatId", "==", currentChatId),
+        orderBy("createdAt")
+    );
 
     onSnapshot(q, (snap) => {
-
         const box = document.getElementById("messages");
         box.innerHTML = "";
-
-        snap.forEach(docItem => {
-
-            const m = docItem.data();
-            if (m.chatId !== currentChat) return;
-
-            const div = document.createElement("div");
-            div.className = "msg";
-
-            if (m.sender === currentUser) {
-                div.classList.add("me");
-            } else {
-                div.classList.add("other");
-            }
-
-            div.innerText = m.text;
-
-            box.appendChild(div);
+        snap.forEach(m => {
+            const data = m.data();
+            const msgDiv = document.createElement("div");
+            msgDiv.className = "msg " + (data.sender === currentUser.uid ? "me" : "other");
+            msgDiv.innerText = data.text;
+            box.appendChild(msgDiv);
         });
-
         box.scrollTop = box.scrollHeight;
     });
 }
 
-// OFFLINE
+// 🟡 Обновление статуса при закрытии
 window.addEventListener("beforeunload", async () => {
     if (!currentUser) return;
-
-    await setDoc(doc(db, "users", currentUser), {
+    await setDoc(doc(db, "users", currentUser.uid), {
         online: false,
         lastSeen: serverTimestamp()
     }, { merge: true });
 });
 
 </script>
-
 </body>
 </html>
