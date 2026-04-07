@@ -29,6 +29,17 @@ body {
     -webkit-font-smoothing: antialiased;
     font-size: 16px;
 }
+        /* Тёмная тема */
+body.dark {
+    --primary: #1e90ff;
+    --primary-hover: #1c7cd6;
+    --bg: #121212;
+    --card: #1e1e1e;
+    --text-main: #e0e0e0;
+    --text-muted: #aaaaaa;
+    --border: #333333;
+    --shadow: rgba(0, 0, 0, 0.7);
+}
 
 /* Хедер */
 .top-nav {
@@ -328,12 +339,13 @@ input[type="text"]:focus {
 
 <div class="top-nav">
     <div class="nav-content">
-        <div class="logo">CloudApp</div>
+        <div class="logo">Testogram</div>
         <div id="authBox">
             <button id="loginBtn" class="btn-primary" style="width: auto; padding: 8px 24px;">Войти через Google</button>
             <div id="userInfo" style="display:none; align-items: center; gap: 16px;">
                 <span id="navName" style="font-weight: 500; font-size: 14px;"></span>
                 <button id="logoutBtn" style="background:none; border: 1px solid var(--border); padding: 6px 12px; border-radius: 8px; cursor: pointer; font-size: 13px;">Выйти</button>
+                <button id="themeToggle" style="margin-left:16px; background:none; border:1px solid var(--border); padding:6px 12px; border-radius:8px; cursor:pointer; font-size:13px;">🌙 Тема</button>
             </div>
         </div>
     </div>
@@ -519,6 +531,11 @@ onSnapshot(query(collection(db, "requests"), orderBy("timestamp", "desc")), (sna
             </div>`;
     });
 });
+    const themeToggle = document.getElementById("themeToggle");
+themeToggle.onclick = () => {
+    document.body.classList.toggle("dark");
+    themeToggle.innerText = document.body.classList.contains("dark") ? "☀️ Светлая" : "🌙 Тема";
+};
 
 window.react = async (id, type) => {
     const docRef = doc(db, "requests", id);
