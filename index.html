@@ -2,33 +2,38 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Private Cloud Chat</title>
     <style>
-        body { font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; background: #f0f2f5; }
-        #login-screen { text-align: center; background: white; padding: 40px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-        .google-btn { background: #4285f4; color: white; border: none; padding: 12px 24px; border-radius: 4px; cursor: pointer; font-size: 16px; }
-        #chat-app { display: none; flex-direction: column; width: 400px; height: 500px; background: white; border-radius: 8px; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0f2f5; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        #login-screen { background: white; padding: 40px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); text-align: center; }
+        .google-btn { background-color: #4285f4; color: white; border: none; padding: 12px 24px; border-radius: 4px; font-size: 16px; font-weight: 500; cursor: pointer; }
+        #chat-app { display: none; width: 400px; height: 500px; background: white; border-radius: 12px; flex-direction: column; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        #messages { flex: 1; padding: 20px; overflow-y: auto; background: #f9f9f9; border-bottom: 1px solid #eee; }
+        .input-box { padding: 15px; display: flex; gap: 10px; }
+        input { flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 4px; }
     </style>
 </head>
 <body>
 
 <div id="login-screen">
     <h2>Private Cloud Chat</h2>
-    <button class="google-btn" id="login-trigger">Войти через Google</button>
+    <button class="google-btn" id="btn-login">Войти через Google</button>
 </div>
 
 <div id="chat-app">
-    <div style="padding: 15px; border-bottom: 1px solid #ddd;">
-        <span id="user-display"></span>
-        <button onclick="location.reload()" style="float:right">Выйти</button>
+    <div style="padding: 15px; background: #4285f4; color: white; border-radius: 12px 12px 0 0; display: flex; justify-content: space-between;">
+        <span id="user-name">Чат</span>
+        <button onclick="location.reload()" style="background: none; border: none; color: white; cursor: pointer;">Выйти</button>
     </div>
-    <div id="messages" style="flex:1; padding: 15px; overflow-y:auto; background:#f9f9f9"></div>
-    <div style="padding: 15px; display:flex;">
-        <input type="text" id="input" style="flex:1; padding: 8px;" placeholder="Сообщение...">
-        <button id="send">Отправить</button>
+    <div id="messages"></div>
+    <div class="input-box">
+        <input type="text" id="msg-input" placeholder="Введите сообщение...">
+        <button id="btn-send" style="padding: 10px 20px; background: #4285f4; color: white; border: none; border-radius: 4px; cursor: pointer;">></button>
     </div>
 </div>
 
+<!-- Используем другой способ подключения, чтобы избежать ошибки CORS -->
 <script type="module">
     import { initializeApp } from "https://gstatic.com";
     import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged } from "https://gstatic.com";
@@ -36,7 +41,7 @@
 
     const firebaseConfig = {
         apiKey: "AIzaSyBPnoCcL-TUYTdYPaJunewfsaWIylyDE7w",
-        authDomain: "test-da803.firebaseapp.com",
+        authDomain: "://firebaseapp.com",
         projectId: "test-da803",
         storageBucket: "test-da803.firebasestorage.app",
         messagingSenderId: "501020279316",
@@ -48,43 +53,47 @@
     const db = getDatabase(app);
     const provider = new GoogleAuthProvider();
 
-    // Прямая привязка клика к кнопке (решает проблему "не нажимается")
-    document.getElementById('login-trigger').addEventListener('click', () => {
-        signInWithPopup(auth, provider)
-            .then((result) => console.log("Успешный вход"))
-            .catch((error) => {
-                console.error("Ошибка:", error.code);
-                if (error.code === 'auth/popup-blocked') {
-                    alert("Браузер заблокировал окно. Разрешите всплывающие окна для этого сайта.");
-                } else {
-                    alert("Ошибка входа: " + error.message);
-                }
-            });
-    });
+    // Прямая привязка событий
+    const loginBtn = document.getElementById('btn-login');
+    const sendBtn = document.getElementById('btn-send');
+    const msgInput = document.getElementById('msg-input');
+    const messagesDiv = document.getElementById('messages');
+
+    loginBtn.onclick = () => {
+        signInWithPopup(auth, provider).catch(err => {
+            console.error(err);
+            alert("Ошибка входа! Проверьте, включен ли Google в Firebase Console.");
+        });
+    };
 
     onAuthStateChanged(auth, (user) => {
         if (user) {
             document.getElementById('login-screen').style.display = 'none';
             document.getElementById('chat-app').style.display = 'flex';
-            document.getElementById('user-display').innerText = user.displayName;
+            document.getElementById('user-name').innerText = user.displayName;
             
-            // Загрузка сообщений
+            // Слушаем новые сообщения
             onChildAdded(ref(db, 'messages'), (data) => {
-                const msg = document.createElement('div');
-                msg.innerText = `${data.val().name}: ${data.val().text}`;
-                msg.style.marginBottom = "5px";
-                document.getElementById('messages').appendChild(msg);
+                const m = data.val();
+                const item = document.createElement('div');
+                item.style.marginBottom = "10px";
+                item.innerHTML = `<strong>${m.name}:</strong> ${m.text}`;
+                messagesDiv.appendChild(item);
+                messagesDiv.scrollTop = messagesDiv.scrollHeight;
             });
         }
     });
 
-    document.getElementById('send').onclick = () => {
-        const text = document.getElementById('input').value;
-        if (text.trim()) {
-            push(ref(db, 'messages'), { name: auth.currentUser.displayName, text: text });
-            document.getElementById('input').value = '';
+    sendBtn.onclick = () => {
+        if (msgInput.value.trim() && auth.currentUser) {
+            push(ref(db, 'messages'), {
+                name: auth.currentUser.displayName,
+                text: msgInput.value
+            });
+            msgInput.value = '';
         }
     };
 </script>
+
 </body>
 </html>
