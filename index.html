@@ -3,22 +3,93 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Messenger</title>
+<title>Messenger Pro</title>
 
 <style>
 body {
   margin:0;
+  background:#eef1f5;
   font-family: Arial;
   display:flex;
+  justify-content:center;
+  align-items:center;
   height:100vh;
 }
 
-.sidebar {
-  width:250px;
-  border-right:1px solid #ccc;
+.app {
+  width:900px;
+  height:600px;
+  background:#fff;
+  border-radius:15px;
+  box-shadow:0 10px 30px rgba(0,0,0,0.1);
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+}
+
+/* HEADER */
+.header {
+  padding:15px;
+  text-align:center;
+  border-bottom:1px solid #eee;
+  font-weight:bold;
+}
+
+/* TABS */
+.tabs {
+  display:flex;
+  border-bottom:1px solid #eee;
+}
+
+.tab {
+  flex:1;
+  text-align:center;
+  padding:10px;
+  cursor:pointer;
+}
+
+.tab.active {
+  border-bottom:3px solid #0084ff;
+  font-weight:bold;
+}
+
+/* CONTENT */
+.content {
+  flex:1;
+  display:flex;
+}
+
+/* USERS */
+.users {
+  width:200px;
+  border-right:1px solid #eee;
   overflow:auto;
 }
 
+.user {
+  padding:10px;
+  cursor:pointer;
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+
+.user:hover {
+  background:#f5f5f5;
+}
+
+.avatar {
+  width:35px;
+  height:35px;
+  border-radius:50%;
+  background:#0084ff;
+  color:#fff;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+
+/* CHAT */
 .chat {
   flex:1;
   display:flex;
@@ -29,18 +100,64 @@ body {
   flex:1;
   padding:10px;
   overflow:auto;
+  background:#f7f7f7;
 }
 
-.msg.me { text-align:right; }
-.msg.other { text-align:left; }
+.msg {
+  margin:5px 0;
+  max-width:70%;
+  padding:8px 12px;
+  border-radius:15px;
+}
+
+.me {
+  background:#0084ff;
+  color:#fff;
+  margin-left:auto;
+}
+
+.other {
+  background:#fff;
+}
 
 .input {
   display:flex;
+  padding:10px;
+  border-top:1px solid #eee;
 }
 
-input { flex:1; padding:10px; }
-button { padding:10px; }
+input {
+  flex:1;
+  padding:10px;
+  border-radius:20px;
+  border:1px solid #ccc;
+}
 
+button {
+  margin-left:10px;
+  padding:10px 15px;
+  border:none;
+  border-radius:20px;
+  background:#0084ff;
+  color:#fff;
+  cursor:pointer;
+}
+
+/* POSTS */
+.posts {
+  padding:10px;
+  width:100%;
+}
+
+.post {
+  background:#fff;
+  padding:10px;
+  border-radius:10px;
+  margin-bottom:10px;
+  box-shadow:0 2px 5px rgba(0,0,0,0.05);
+}
+
+/* LOGIN */
 .overlay {
   position:fixed;
   inset:0;
@@ -58,49 +175,48 @@ button { padding:10px; }
   <button onclick="loginGoogle()">Войти через Google</button>
 </div>
 
-<div class="sidebar">
-  <h3 id="myName">...</h3>
-  <button onclick="logout()">Выйти</button>
-  <div id="users"></div>
-</div>
+<div class="app">
+  <div class="header" id="myName">...</div>
 
-<div class="chat">
-  <h3 id="chatTitle">Выбери чат</h3>
-  <div id="messages" class="messages"></div>
-
-  <div class="input">
-    <input id="msgInput">
-    <button onclick="sendMessage()">Send</button>
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('chat')">Чаты</div>
+    <div class="tab" onclick="switchTab('posts')">Посты</div>
   </div>
 
-  <hr>
+  <div class="content" id="chatTab">
+    <div class="users" id="users"></div>
 
-  <input id="postInput" placeholder="Пост...">
-  <button onclick="createPost()">Опубликовать</button>
-  <div id="posts"></div>
+    <div class="chat">
+      <div id="messages" class="messages"></div>
+
+      <div class="input">
+        <input id="msgInput" placeholder="Сообщение...">
+        <button onclick="sendMessage()">➤</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="content" id="postsTab" style="display:none;">
+    <div class="posts">
+      <div class="input">
+        <input id="postInput" placeholder="Что нового?">
+        <button onclick="createPost()">Опубликовать</button>
+      </div>
+      <div id="posts"></div>
+    </div>
+  </div>
 </div>
 
 <script type="module">
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
-import {
-  getAuth, GoogleAuthProvider, signInWithPopup,
-  onAuthStateChanged, signOut
-} from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
-
-import {
-  getFirestore, collection, addDoc, setDoc, doc,
-  query, onSnapshot, serverTimestamp, where, orderBy
-} from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
+import { getFirestore, collection, addDoc, setDoc, doc, query, onSnapshot, serverTimestamp, where, orderBy } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyBPnoCcL-TUYTdYPaJunewfsaWIylyDE7w",
-  authDomain: "test-da803.firebaseapp.com",
-  projectId: "test-da803",
-  storageBucket: "test-da803.firebasestorage.app",
-  messagingSenderId: "501020279316",
-  appId: "1:501020279316:web:7acd5a849fcd0df318dd01",
-  measurementId: "G-XYN6569D33"
+  apiKey: "ТВОЙ_API_KEY",
+  authDomain: "ТВОЙ_PROJECT.firebaseapp.com",
+  projectId: "ТВОЙ_PROJECT",
 };
 
 const app = initializeApp(firebaseConfig);
@@ -111,65 +227,54 @@ let currentUser = null;
 let currentChatId = null;
 let unsub = null;
 
-// LOGIN
+// AUTH
 window.loginGoogle = async () => {
   const provider = new GoogleAuthProvider();
-  provider.setCustomParameters({ prompt: "select_account" });
-
-  try {
-    await signInWithPopup(auth, provider);
-  } catch (e) {
-    alert(e.message);
-  }
+  await signInWithPopup(auth, provider);
 };
 
-window.logout = () => signOut(auth);
-
-// AUTH STATE
 onAuthStateChanged(auth, async (user) => {
-  if (user) {
+  if(user){
     currentUser = user;
-    loginOverlay.style.display = "none";
-
+    loginOverlay.style.display="none";
     myName.innerText = user.displayName;
 
-    await setDoc(doc(db, "users", user.uid), {
-      name: user.displayName,
-      online: true,
-      lastSeen: serverTimestamp()
-    }, { merge:true });
+    await setDoc(doc(db,"users",user.uid),{
+      name:user.displayName,
+      online:true
+    },{merge:true});
 
     loadUsers();
     loadPosts();
-  } else {
-    loginOverlay.style.display = "flex";
   }
 });
 
 // USERS
 function loadUsers(){
-  onSnapshot(collection(db,"users"), snap=>{
+  onSnapshot(collection(db,"users"),snap=>{
     users.innerHTML="";
     snap.forEach(u=>{
       if(u.id===currentUser.uid) return;
 
       const div=document.createElement("div");
-      div.innerText=u.data().name;
-      div.onclick=()=>openChat(u.id,u.data().name);
+      div.className="user";
+      div.innerHTML=`
+        <div class="avatar">${u.data().name[0]}</div>
+        ${u.data().name}
+      `;
+      div.onclick=()=>openChat(u.id);
       users.appendChild(div);
     });
   });
 }
 
-// OPEN CHAT
-window.openChat = (uid,name)=>{
+// CHAT
+window.openChat=(uid)=>{
   currentChatId=[currentUser.uid,uid].sort().join("_");
-  chatTitle.innerText=name;
 
   if(unsub) unsub();
 
-  const q=query(
-    collection(db,"messages"),
+  const q=query(collection(db,"messages"),
     where("chatId","==",currentChatId),
     orderBy("createdAt")
   );
@@ -186,13 +291,11 @@ window.openChat = (uid,name)=>{
   });
 };
 
-// SEND MESSAGE
-window.sendMessage = async ()=>{
-  const text=msgInput.value.trim();
-  if(!text || !currentChatId) return;
+window.sendMessage=async()=>{
+  if(!msgInput.value) return;
 
   await addDoc(collection(db,"messages"),{
-    text,
+    text:msgInput.value,
     sender:currentUser.uid,
     chatId:currentChatId,
     createdAt:serverTimestamp()
@@ -202,12 +305,11 @@ window.sendMessage = async ()=>{
 };
 
 // POSTS
-window.createPost = async ()=>{
-  const text=postInput.value.trim();
-  if(!text) return;
+window.createPost=async()=>{
+  if(!postInput.value) return;
 
   await addDoc(collection(db,"posts"),{
-    text,
+    text:postInput.value,
     author:currentUser.displayName,
     createdAt:serverTimestamp()
   });
@@ -223,11 +325,27 @@ function loadPosts(){
     snap.forEach(p=>{
       const d=p.data();
       const div=document.createElement("div");
-      div.innerHTML="<b>"+d.author+"</b>: "+d.text;
+      div.className="post";
+      div.innerHTML="<b>"+d.author+"</b><br>"+d.text;
       posts.appendChild(div);
     });
   });
 }
+
+// TABS
+window.switchTab=(tab)=>{
+  document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
+
+  if(tab==="chat"){
+    chatTab.style.display="flex";
+    postsTab.style.display="none";
+    document.querySelectorAll(".tab")[0].classList.add("active");
+  }else{
+    chatTab.style.display="none";
+    postsTab.style.display="flex";
+    document.querySelectorAll(".tab")[1].classList.add("active");
+  }
+};
 
 </script>
 
