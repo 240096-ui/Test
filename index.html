@@ -2,160 +2,45 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Private Cloud Chat</title>
-    <link href="https://googleapis.com" rel="stylesheet">
     <style>
-        body {
-            font-family: 'Roboto', sans-serif;
-            background-color: #f0f2f5;
-            margin: 0;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-        }
-
-        /* Экран входа */
-        #login-screen {
-            text-align: center;
-            background: white;
-            padding: 40px;
-            border-radius: 12px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-        }
-
-        .google-btn {
-            background-color: #4285f4;
-            color: white;
-            border: none;
-            padding: 12px 24px;
-            border-radius: 4px;
-            font-size: 16px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: background 0.3s;
-        }
-
-        .google-btn:hover { background-color: #357ae8; }
-
-        /* Контейнер чата */
-        .chat-container {
-            width: 100%;
-            max-width: 500px;
-            height: 90vh;
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-            display: none; /* Скрыт до логина */
-            flex-direction: column;
-        }
-
-        .user-header {
-            padding: 15px 20px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            border-bottom: 1px solid #eee;
-        }
-
-        .user-info { display: flex; align-items: center; gap: 12px; }
-        .avatar {
-            width: 35px; height: 35px;
-            border-radius: 50%;
-            background: #1a73e8;
-            color: white;
-            display: flex; align-items: center; justify-content: center;
-            font-weight: bold;
-        }
-
-        .logout-btn { color: #d93025; cursor: pointer; font-size: 14px; }
-
-        .chat-messages {
-            flex: 1;
-            padding: 20px;
-            overflow-y: auto;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            background: #f9f9f9;
-        }
-
-        .message {
-            max-width: 80%;
-            padding: 10px 15px;
-            border-radius: 15px;
-            font-size: 14px;
-            word-wrap: break-word;
-        }
-
-        .received { background: #e8e8e8; align-self: flex-start; }
-        .sent { background: #1a73e8; color: white; align-self: flex-end; }
-
-        .input-area {
-            padding: 15px;
-            display: flex;
-            gap: 10px;
-            border-top: 1px solid #eee;
-        }
-
-        input {
-            flex: 1;
-            border: 1px solid #ddd;
-            border-radius: 20px;
-            padding: 10px 15px;
-            outline: none;
-        }
-
-        #send-btn {
-            background: none; border: none; color: #1a73e8;
-            cursor: pointer; font-weight: bold;
-        }
+        body { font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; background: #f0f2f5; }
+        #login-screen { text-align: center; background: white; padding: 40px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .google-btn { background: #4285f4; color: white; border: none; padding: 12px 24px; border-radius: 4px; cursor: pointer; font-size: 16px; }
+        #chat-app { display: none; flex-direction: column; width: 400px; height: 500px; background: white; border-radius: 8px; }
     </style>
 </head>
 <body>
 
-<!-- Экран входа -->
 <div id="login-screen">
-    <h2 style="margin-bottom: 20px;">Private Cloud Chat</h2>
-    <button class="google-btn" id="btn-login">Войти через Google</button>
+    <h2>Private Cloud Chat</h2>
+    <button class="google-btn" id="login-trigger">Войти через Google</button>
 </div>
 
-<!-- Основное приложение -->
-<div class="chat-container" id="chat-app">
-    <div class="user-header">
-        <div class="user-info">
-            <div class="avatar" id="user-avatar">?</div>
-            <span id="user-name">Загрузка...</span>
-        </div>
-        <span class="logout-btn" id="btn-logout">Выйти</span>
+<div id="chat-app">
+    <div style="padding: 15px; border-bottom: 1px solid #ddd;">
+        <span id="user-display"></span>
+        <button onclick="location.reload()" style="float:right">Выйти</button>
     </div>
-
-    <div class="chat-messages" id="messages-container">
-        <!-- Сообщения появятся здесь -->
-    </div>
-
-    <div class="input-area">
-        <input type="text" id="msg-input" placeholder="Напишите сообщение...">
-        <button id="send-btn">ОТПР.</button>
+    <div id="messages" style="flex:1; padding: 15px; overflow-y:auto; background:#f9f9f9"></div>
+    <div style="padding: 15px; display:flex;">
+        <input type="text" id="input" style="flex:1; padding: 8px;" placeholder="Сообщение...">
+        <button id="send">Отправить</button>
     </div>
 </div>
 
 <script type="module">
-    // Импорт SDK
     import { initializeApp } from "https://gstatic.com";
-    import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://gstatic.com";
-    import { getDatabase, ref, push, onChildAdded, serverTimestamp } from "https://gstatic.com";
+    import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged } from "https://gstatic.com";
+    import { getDatabase, ref, push, onChildAdded } from "https://gstatic.com";
 
-    // Твой конфиг
     const firebaseConfig = {
         apiKey: "AIzaSyBPnoCcL-TUYTdYPaJunewfsaWIylyDE7w",
-        authDomain: "://firebaseapp.com",
+        authDomain: "test-da803.firebaseapp.com",
         projectId: "test-da803",
         storageBucket: "test-da803.firebasestorage.app",
         messagingSenderId: "501020279316",
-        appId: "1:501020279316:web:7acd5a849fcd0df318dd01",
-        measurementId: "G-XYN6569D33"
+        appId: "1:501020279316:web:7acd5a849fcd0df318dd01"
     };
 
     const app = initializeApp(firebaseConfig);
@@ -163,66 +48,43 @@
     const db = getDatabase(app);
     const provider = new GoogleAuthProvider();
 
-    // Элементы интерфейса
-    const loginScreen = document.getElementById('login-screen');
-    const chatApp = document.getElementById('chat-app');
-    const loginBtn = document.getElementById('btn-login');
-    const logoutBtn = document.getElementById('btn-logout');
-    const sendBtn = document.getElementById('send-btn');
-    const msgInput = document.getElementById('msg-input');
-    const messagesContainer = document.getElementById('messages-container');
-
-    // ЛОГИКА ВХОДА
-    loginBtn.addEventListener('click', () => {
-        signInWithPopup(auth, provider).catch(err => alert("Ошибка: " + err.message));
+    // Прямая привязка клика к кнопке (решает проблему "не нажимается")
+    document.getElementById('login-trigger').addEventListener('click', () => {
+        signInWithPopup(auth, provider)
+            .then((result) => console.log("Успешный вход"))
+            .catch((error) => {
+                console.error("Ошибка:", error.code);
+                if (error.code === 'auth/popup-blocked') {
+                    alert("Браузер заблокировал окно. Разрешите всплывающие окна для этого сайта.");
+                } else {
+                    alert("Ошибка входа: " + error.message);
+                }
+            });
     });
 
-    logoutBtn.addEventListener('click', () => signOut(auth));
-
-    // СЛУШАТЕЛЬ СОСТОЯНИЯ (ВОШЕЛ/ВЫШЕЛ)
     onAuthStateChanged(auth, (user) => {
         if (user) {
-            loginScreen.style.display = 'none';
-            chatApp.style.display = 'flex';
-            document.getElementById('user-name').innerText = user.displayName;
-            document.getElementById('user-avatar').innerText = user.displayName.charAt(0);
-            loadMessages();
-        } else {
-            loginScreen.style.display = 'block';
-            chatApp.style.display = 'none';
-            messagesContainer.innerHTML = ''; // Очистить чат при выходе
+            document.getElementById('login-screen').style.display = 'none';
+            document.getElementById('chat-app').style.display = 'flex';
+            document.getElementById('user-display').innerText = user.displayName;
+            
+            // Загрузка сообщений
+            onChildAdded(ref(db, 'messages'), (data) => {
+                const msg = document.createElement('div');
+                msg.innerText = `${data.val().name}: ${data.val().text}`;
+                msg.style.marginBottom = "5px";
+                document.getElementById('messages').appendChild(msg);
+            });
         }
     });
 
-    // ОТПРАВКА СООБЩЕНИЙ
-    sendBtn.addEventListener('click', sendMessage);
-    msgInput.addEventListener('keypress', (e) => { if(e.key === 'Enter') sendMessage(); });
-
-    function sendMessage() {
-        const text = msgInput.value.trim();
-        if (text && auth.currentUser) {
-            push(ref(db, 'chat_messages'), {
-                text: text,
-                uid: auth.currentUser.uid,
-                name: auth.currentUser.displayName,
-                time: serverTimestamp()
-            });
-            msgInput.value = '';
+    document.getElementById('send').onclick = () => {
+        const text = document.getElementById('input').value;
+        if (text.trim()) {
+            push(ref(db, 'messages'), { name: auth.currentUser.displayName, text: text });
+            document.getElementById('input').value = '';
         }
-    }
-
-    // ЗАГРУЗКА СООБЩЕНИЙ
-    function loadMessages() {
-        onChildAdded(ref(db, 'chat_messages'), (data) => {
-            const msg = data.val();
-            const div = document.createElement('div');
-            div.className = `message ${msg.uid === auth.currentUser.uid ? 'sent' : 'received'}`;
-            div.innerText = msg.text;
-            messagesContainer.appendChild(div);
-            messagesContainer.scrollTop = messagesContainer.scrollHeight;
-        });
-    }
+    };
 </script>
-
 </body>
 </html>
