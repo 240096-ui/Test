@@ -2,198 +2,166 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<title>CloudApp</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>YusufCHAT — Premium Edition</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
 <style>
-body{
-  margin:0;
-  font-family:Arial;
-  background:#eef1f5;
+:root {
+  --primary: #007bff;
+  --primary-hover: #0056b3;
+  --bg: #f4f7f9;
+  --card: #ffffff;
+  --text-main: #1a1d21;
+  --text-muted: #64748b;
+  --border: #e2e8f0;
+  --radius: 20px;
 }
 
-.container{
-  display:flex;
-  height:100vh;
+body {
+  font-family: 'Inter', sans-serif;
+  background: var(--bg);
+  margin: 0;
 }
 
-/* LEFT */
-.left{
-  width:260px;
-  padding:15px;
+/* HEADER */
+.top-nav {
+  width: 100%;
+  background: rgba(255,255,255,0.8);
+  backdrop-filter: blur(10px);
+  padding: 12px 0;
+  display: flex;
+  justify-content: center;
+  border-bottom: 1px solid var(--border);
 }
 
-.card{
-  background:#fff;
-  border-radius:15px;
-  padding:15px;
-  margin-bottom:15px;
-  box-shadow:0 5px 15px rgba(0,0,0,0.05);
+.nav-content {
+  width: 100%;
+  max-width: 1200px;
+  display: flex;
+  justify-content: space-between;
+  padding: 0 24px;
 }
 
-.avatar{
-  width:70px;
-  height:70px;
-  border-radius:50%;
-  background:#ff4d7a;
-  color:#fff;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  font-size:30px;
-  margin:auto;
+.logo {
+  font-weight: 800;
+  font-size: 22px;
+  color: var(--primary);
 }
 
-.user{
-  display:flex;
-  align-items:center;
-  gap:10px;
-  padding:8px;
-  cursor:pointer;
-  border-radius:10px;
+/* GRID */
+.main-layout {
+  display: grid;
+  grid-template-columns: 300px 1fr 340px;
+  gap: 24px;
+  max-width: 1200px;
+  margin: auto;
+  padding: 24px;
 }
 
-.user:hover{
-  background:#f5f5f5;
+.container {
+  background: #fff;
+  padding: 20px;
+  border-radius: 20px;
+  border: 1px solid var(--border);
 }
 
-/* CENTER */
-.center{
-  flex:1;
-  padding:15px;
+/* USERS */
+.user-item {
+  display: flex;
+  gap: 10px;
+  padding: 10px;
+  cursor: pointer;
 }
 
-.postInput input{
-  width:100%;
-  padding:10px;
-  margin-bottom:10px;
-  border-radius:10px;
-  border:1px solid #ccc;
+.user-item:hover {
+  background: #f5f5f5;
 }
 
-.btn{
-  width:100%;
-  padding:10px;
-  background:#1877f2;
-  color:#fff;
-  border:none;
-  border-radius:10px;
-  cursor:pointer;
+/* POSTS */
+.post {
+  background: #fff;
+  padding: 15px;
+  border-radius: 20px;
+  margin-bottom: 15px;
 }
 
-.post{
-  background:#fff;
-  padding:10px;
-  border-radius:15px;
-  margin-top:10px;
+/* CHAT */
+#chatMessages {
+  height: 300px;
+  overflow: auto;
 }
 
-/* RIGHT CHAT */
-.right{
-  width:320px;
-  padding:15px;
+.msg {
+  padding: 8px;
+  margin: 5px 0;
+  border-radius: 10px;
 }
 
-.messages{
-  height:400px;
-  overflow:auto;
-  background:#f7f7f7;
-  padding:10px;
-  border-radius:10px;
+.msg-me {
+  background: #007bff;
+  color: white;
+  margin-left: auto;
 }
 
-.msg{
-  padding:8px;
-  margin:5px 0;
-  border-radius:10px;
-  max-width:70%;
+.msg-them {
+  background: #eee;
 }
 
-.me{
-  background:#1877f2;
-  color:#fff;
-  margin-left:auto;
+/* INPUT */
+input {
+  width: 100%;
+  padding: 10px;
+  margin: 5px 0;
+  border-radius: 10px;
+  border: 1px solid #ccc;
 }
 
-.other{
-  background:#fff;
-}
-
-.input{
-  display:flex;
-  margin-top:10px;
-}
-
-.input input{
-  flex:1;
-  padding:10px;
-  border-radius:20px;
-  border:1px solid #ccc;
-}
-
-.input button{
-  margin-left:10px;
-  padding:10px;
-  border:none;
-  border-radius:50%;
-  background:#1877f2;
-  color:#fff;
-}
-
-/* LOGIN */
-.overlay{
-  position:fixed;
-  inset:0;
-  background:#fff;
-  display:flex;
-  justify-content:center;
-  align-items:center;
+button {
+  padding: 10px;
+  border: none;
+  background: #007bff;
+  color: white;
+  border-radius: 10px;
+  cursor: pointer;
 }
 </style>
 </head>
 
 <body>
 
-<div id="loginOverlay" class="overlay">
-  <button onclick="loginGoogle()">Войти через Google</button>
+<div class="top-nav">
+  <div class="nav-content">
+    <div class="logo">CloudApp</div>
+    <button id="loginBtn">Войти</button>
+  </div>
 </div>
 
-<div class="container">
+<div class="main-layout">
 
   <!-- LEFT -->
-  <div class="left">
-    <div class="card">
-      <div class="avatar" id="avatar">M</div>
-      <h3 id="myName" style="text-align:center;"></h3>
-      <p style="text-align:center;color:gray;">Online</p>
-    </div>
-
-    <div class="card">
-      <b>Собеседники</b>
-      <div id="users"></div>
-    </div>
+  <div class="container">
+    <h3>Собеседники</h3>
+    <div id="userList"></div>
   </div>
 
   <!-- CENTER -->
-  <div class="center">
-    <div class="card postInput">
-      <b>Создать запись</b>
-      <input id="postInput" placeholder="Что у вас нового?">
-      <button class="btn" onclick="createPost()">Опубликовать</button>
+  <div>
+    <div class="container">
+      <input id="contentInput" placeholder="Что нового?">
+      <button id="mainBtn">Опубликовать</button>
     </div>
 
-    <div id="posts"></div>
+    <div id="feed"></div>
   </div>
 
   <!-- RIGHT -->
-  <div class="right">
-    <div class="card">
-      <div id="messages" class="messages"></div>
+  <div class="container">
+    <div id="chatMessages"></div>
 
-      <div class="input">
-        <input id="msgInput" placeholder="Сообщение...">
-        <button onclick="sendMessage()">➤</button>
-      </div>
-    </div>
+    <input id="chatInput">
+    <button id="sendChatBtn">Отправить</button>
   </div>
 
 </div>
@@ -201,127 +169,29 @@ body{
 <script type="module">
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
-import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
-import { getFirestore, collection, addDoc, setDoc, doc, query, onSnapshot, serverTimestamp, where, orderBy } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+import { getAuth, signInWithPopup, GoogleAuthProvider } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
+import { getFirestore, collection, addDoc, query, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBPnoCcL-TUYTdYPaJunewfsaWIylyDE7w",
   authDomain: "test-da803.firebaseapp.com",
-  projectId: "test-da803"
+  projectId: "test-da803",
+  storageBucket: "test-da803.firebasestorage.app",
+  messagingSenderId: "501020279316",
+  appId: "1:501020279316:web:7acd5a849fcd0df318dd01",
+  measurementId: "G-XYN6569D33"
 };
 
 const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
 const db = getFirestore(app);
+const auth = getAuth(app);
 
-let currentUser=null;
-let currentChatId=null;
-let unsub=null;
-
-// LOGIN
-window.loginGoogle = async ()=>{
-  const provider=new GoogleAuthProvider();
-  await signInWithPopup(auth,provider);
+document.getElementById("loginBtn").onclick = async () => {
+  const provider = new GoogleAuthProvider();
+  await signInWithPopup(auth, provider);
 };
-
-onAuthStateChanged(auth, async(user)=>{
-  if(user){
-    currentUser=user;
-    loginOverlay.style.display="none";
-
-    myName.innerText=user.displayName;
-    avatar.innerText=user.displayName[0];
-
-    await setDoc(doc(db,"users",user.uid),{
-      name:user.displayName
-    },{merge:true});
-
-    loadUsers();
-    loadPosts();
-  }
-});
-
-// USERS
-function loadUsers(){
-  onSnapshot(collection(db,"users"),snap=>{
-    users.innerHTML="";
-    snap.forEach(u=>{
-      if(u.id===currentUser.uid) return;
-
-      const div=document.createElement("div");
-      div.className="user";
-      div.innerHTML=`<div class="avatar">${u.data().name[0]}</div>${u.data().name}`;
-      div.onclick=()=>openChat(u.id);
-
-      users.appendChild(div);
-    });
-  });
-}
-
-// CHAT
-window.openChat=(uid)=>{
-  currentChatId=[currentUser.uid,uid].sort().join("_");
-
-  if(unsub) unsub();
-
-  const q=query(collection(db,"messages"),
-    where("chatId","==",currentChatId),
-    orderBy("createdAt")
-  );
-
-  unsub=onSnapshot(q,snap=>{
-    messages.innerHTML="";
-    snap.forEach(m=>{
-      const d=m.data();
-      const div=document.createElement("div");
-      div.className="msg "+(d.sender===currentUser.uid?"me":"other");
-      div.innerText=d.text;
-      messages.appendChild(div);
-    });
-  });
-};
-
-window.sendMessage=async()=>{
-  if(!msgInput.value) return;
-
-  await addDoc(collection(db,"messages"),{
-    text:msgInput.value,
-    sender:currentUser.uid,
-    chatId:currentChatId,
-    createdAt:serverTimestamp()
-  });
-
-  msgInput.value="";
-};
-
-// POSTS
-window.createPost=async()=>{
-  if(!postInput.value) return;
-
-  await addDoc(collection(db,"posts"),{
-    text:postInput.value,
-    author:currentUser.displayName,
-    createdAt:serverTimestamp()
-  });
-
-  postInput.value="";
-};
-
-function loadPosts(){
-  const q=query(collection(db,"posts"),orderBy("createdAt","desc"));
-
-  onSnapshot(q,snap=>{
-    posts.innerHTML="";
-    snap.forEach(p=>{
-      const d=p.data();
-      const div=document.createElement("div");
-      div.className="post";
-      div.innerHTML="<b>"+d.author+"</b><br>"+d.text;
-      posts.appendChild(div);
-    });
-  });
-}
 
 </script>
+
 </body>
 </html>
