@@ -2,160 +2,55 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<title>Messenger App</title>
+<title>Mini Chat + Posts</title>
 <style>
-body {
-    margin: 0;
-    font-family: Arial, sans-serif;
-    display: flex;
-    height: 100vh;
-    background: #e9ebee;
-}
-
-/* SIDEBAR */
-.sidebar {
-    width: 280px;
-    background: #2f3640;
-    color: white;
-    display: flex;
-    flex-direction: column;
-}
-
-.sidebar-header {
-    padding: 15px;
-    font-weight: bold;
-    border-bottom: 1px solid #444;
-    text-align: center;
-}
-
-.login-btn {
-    background: #4285f4;
-    color: white;
-    border: none;
-    padding: 8px;
-    cursor: pointer;
-    width: 90%;
-    margin: 10px auto;
-    font-size: 14px;
-}
-
-.user {
-    padding: 10px;
-    border-bottom: 1px solid #444;
-    cursor: pointer;
-}
-
-.user:hover {
-    background: #3b3b3b;
-}
-
-.status {
-    font-size: 11px;
-    color: #ccc;
-}
-
-/* MAIN */
-.main {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-}
-
-.chat-header {
-    padding: 15px;
-    background: #fff;
-    border-bottom: 1px solid #ccc;
-    font-weight: bold;
-}
-
-.messages {
-    flex: 1;
-    padding: 15px;
-    overflow-y: auto;
-    background: #f5f5f5;
-}
-
-.msg {
-    padding: 10px;
-    border-radius: 10px;
-    margin: 5px 0;
-    max-width: 60%;
-}
-
-.me {
-    background: #4a90e2;
-    color: white;
-    margin-left: auto;
-}
-
-.other {
-    background: #fff;
-    border: 1px solid #ddd;
-}
-
-.inputBox {
-    display: flex;
-    border-top: 1px solid #ccc;
-    background: #fff;
-}
-
-.inputBox input {
-    flex: 1;
-    padding: 12px;
-    border: none;
-    font-size: 14px;
-}
-
-.inputBox button {
-    padding: 12px 18px;
-    border: none;
-    background: #4a90e2;
-    color: white;
-    cursor: pointer;
-}
+body { margin:0; font-family: Arial; display:flex; height:100vh; }
+.sidebar { width:280px; background:#2c3e50; color:white; display:flex; flex-direction:column; }
+.sidebar h3 { margin:10px; }
+.user { padding:10px; border-bottom:1px solid #34495e; cursor:pointer; }
+.user:hover { background:#34495e; }
+.main { flex:1; display:flex; flex-direction:column; }
+.header { padding:10px; background:#ecf0f1; border-bottom:1px solid #bdc3c7; }
+.messages, .posts { flex:1; padding:10px; overflow-y:auto; background:#f5f5f5; }
+.msg { padding:8px; margin:5px 0; border-radius:8px; max-width:60%; }
+.me { background:#3498db; color:white; margin-left:auto; }
+.other { background:#fff; border:1px solid #ccc; }
+.inputBox, .newPost { display:flex; padding:5px; border-top:1px solid #bdc3c7; }
+.inputBox input, .newPost input { flex:1; padding:8px; }
+.inputBox button, .newPost button { padding:8px; background:#3498db; color:white; border:none; cursor:pointer; }
 </style>
 </head>
 <body>
 
 <div class="sidebar">
-    <div class="sidebar-header">Пользователи</div>
-    <button class="login-btn" onclick="googleLogin()">Войти через Google</button>
+    <h3>Пользователи</h3>
+    <button onclick="loginGoogle()">Войти через Google</button>
     <div id="users"></div>
 </div>
 
 <div class="main">
-    <div class="chat-header" id="chatTitle">Выберите чат</div>
+    <div class="header" id="chatTitle">Выберите чат</div>
     <div class="messages" id="messages"></div>
+
     <div class="inputBox">
-        <input id="msgInput" placeholder="Введите сообщение...">
+        <input id="msgInput" placeholder="Введите сообщение">
         <button onclick="sendMessage()">Отправить</button>
     </div>
+
+    <div class="newPost">
+        <input id="postInput" placeholder="Создать пост">
+        <button onclick="createPost()">Пост</button>
+    </div>
+
+    <div class="posts" id="posts"></div>
 </div>
 
 <script type="module">
-
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
-import {
-    getAuth,
-    GoogleAuthProvider,
-    signInWithPopup,
-    onAuthStateChanged
-} from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
+import { getFirestore, collection, addDoc, setDoc, doc, query, orderBy, onSnapshot, serverTimestamp, where } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 
-import {
-    getFirestore,
-    collection,
-    query,
-    where,
-    onSnapshot,
-    addDoc,
-    doc,
-    setDoc,
-    serverTimestamp,
-    orderBy
-} from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
-
-// 🔥 Вставь свой Firebase config
+// 🔥 Настройки Firebase
 const firebaseConfig = {
   apiKey: "AIzaSyBPnoCcL-TUYTdYPaJunewfsaWIylyDE7w",
   authDomain: "test-da803.firebaseapp.com",
@@ -165,116 +60,111 @@ const firebaseConfig = {
   appId: "1:501020279316:web:7acd5a849fcd0df318dd01",
   measurementId: "G-XYN6569D33"
 };
-
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
 let currentUser = null;
-let currentChatId = null;
+let currentChat = null;
 
-// 📌 Вход через Google
-window.googleLogin = async () => {
+// Google Login
+window.loginGoogle = async () => {
     const provider = new GoogleAuthProvider();
     await signInWithPopup(auth, provider);
 };
 
-// 👤 Отслеживание входа
 onAuthStateChanged(auth, async (user) => {
-    if (!user) return;
-    currentUser = {
-        uid: user.uid,
-        name: user.displayName,
-        email: user.email,
-        photo: user.photoURL
-    };
-
-    await setDoc(doc(db, "users", currentUser.uid), {
-        name: currentUser.name,
-        online: true,
-        lastSeen: serverTimestamp()
-    }, { merge: true });
-
+    if(!user) return;
+    currentUser = { uid: user.uid, name: user.displayName };
+    await setDoc(doc(db,"users",user.uid),{name:user.displayName, online:true},{merge:true});
     loadUsers();
+    loadPosts();
 });
 
-// 📋 Список пользователей
+// Load users
 function loadUsers() {
-    const q = query(collection(db, "users"));
-    onSnapshot(q, (snap) => {
+    const q = query(collection(db,"users"));
+    onSnapshot(q,snap=>{
         const container = document.getElementById("users");
-        container.innerHTML = "";
-        snap.forEach(u => {
+        container.innerHTML="";
+        snap.forEach(u=>{
+            if(u.id === currentUser.uid) return;
             const data = u.data();
-            const id = u.id;
-
-            if (!currentUser || id === currentUser.uid) return;
-
             const div = document.createElement("div");
-            div.className = "user";
-            div.innerHTML = `
-                ${data.name}
-                <div class="status">${data.online ? "🟢 online" : "🔴 offline"}</div>
-            `;
-            div.onclick = () => openChat(id, data.name);
+            div.className="user";
+            div.innerText = data.name + (data.online?" 🟢":" 🔴");
+            div.onclick=()=>openChat(u.id,data.name);
             container.appendChild(div);
         });
     });
 }
 
-// 🗨️ Открыть чат
-function openChat(otherUid, otherName) {
-    currentChatId = [currentUser.uid, otherUid].sort().join("_");
-    document.getElementById("chatTitle").innerText = otherName;
+// Open chat
+function openChat(uid,name){
+    currentChat = [currentUser.uid,uid].sort().join("_");
+    document.getElementById("chatTitle").innerText = "Чат с "+name;
     loadMessages();
 }
 
-// ✉️ Отправка сообщения
-window.sendMessage = async () => {
-    const text = document.getElementById("msgInput").value.trim();
-    if (!text || !currentChatId) return;
-
-    await addDoc(collection(db, "messages"), {
-        chatId: currentChatId,
-        sender: currentUser.uid,
-        text,
-        createdAt: serverTimestamp()
-    });
-
-    document.getElementById("msgInput").value = "";
-};
-
-// 📨 Загрузка сообщений
-function loadMessages() {
-    const q = query(
-        collection(db, "messages"),
-        where("chatId", "==", currentChatId),
-        orderBy("createdAt")
-    );
-
-    onSnapshot(q, (snap) => {
+// Load messages
+function loadMessages(){
+    const q = query(collection(db,"messages"),where("chatId","==",currentChat),orderBy("createdAt"));
+    onSnapshot(q,snap=>{
         const box = document.getElementById("messages");
-        box.innerHTML = "";
-        snap.forEach(m => {
+        box.innerHTML="";
+        snap.forEach(m=>{
             const data = m.data();
-            const msgDiv = document.createElement("div");
-            msgDiv.className = "msg " + (data.sender === currentUser.uid ? "me" : "other");
-            msgDiv.innerText = data.text;
-            box.appendChild(msgDiv);
+            const div = document.createElement("div");
+            div.className="msg "+(data.sender===currentUser.uid?"me":"other");
+            div.innerText = data.text;
+            box.appendChild(div);
         });
         box.scrollTop = box.scrollHeight;
     });
 }
 
-// 🟡 Обновление статуса при закрытии
-window.addEventListener("beforeunload", async () => {
-    if (!currentUser) return;
-    await setDoc(doc(db, "users", currentUser.uid), {
-        online: false,
-        lastSeen: serverTimestamp()
-    }, { merge: true });
-});
+// Send message
+window.sendMessage = async ()=>{
+    const text = document.getElementById("msgInput").value.trim();
+    if(!text || !currentChat) return;
+    await addDoc(collection(db,"messages"),{
+        chatId: currentChat,
+        sender: currentUser.uid,
+        text,
+        createdAt: serverTimestamp()
+    });
+    document.getElementById("msgInput").value="";
+};
 
+// Create post
+window.createPost = async ()=>{
+    const text = document.getElementById("postInput").value.trim();
+    if(!text) return;
+    await addDoc(collection(db,"posts"),{
+        author: currentUser.name,
+        text,
+        createdAt: serverTimestamp()
+    });
+    document.getElementById("postInput").value="";
+};
+
+// Load posts
+function loadPosts(){
+    const q = query(collection(db,"posts"),orderBy("createdAt","desc"));
+    onSnapshot(q,snap=>{
+        const box = document.getElementById("posts");
+        box.innerHTML="";
+        snap.forEach(p=>{
+            const data = p.data();
+            const div = document.createElement("div");
+            div.style.border="1px solid #ccc";
+            div.style.margin="5px 0";
+            div.style.padding="5px";
+            div.innerHTML=`<b>${data.author}</b>: ${data.text}`;
+            box.appendChild(div);
+        });
+    });
+}
 </script>
 </body>
 </html>
