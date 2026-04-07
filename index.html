@@ -2,63 +2,44 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<title>Cloud Feed</title>
+<title>Private Chat</title>
 
 <style>
 body {
-    font-family: 'Inter', sans-serif;
+    font-family: Arial;
     background: #f4f7f6;
     display: flex;
-    flex-direction: column;
-    align-items: center;
+    justify-content: center;
     padding: 20px;
 }
 
 .container {
-    width: 100%;
-    max-width: 500px;
+    width: 400px;
     background: white;
-    padding: 20px;
-    border-radius: 12px;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.05);
-}
-
-input {
-    width: 100%;
-    padding: 10px;
-    margin: 6px 0;
-    border: 1px solid #ddd;
-    border-radius: 6px;
-}
-
-button {
-    padding: 10px;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-}
-
-#mainBtn {
-    background: #007bff;
-    color: white;
-    width: 100%;
-}
-
-.post {
-    background: white;
-    border: 1px solid #eee;
     padding: 15px;
-    margin-top: 10px;
-    border-radius: 8px;
+    border-radius: 10px;
 }
 
-.like-btn {
-    background: #f1f1f1;
+.users button {
+    margin: 5px;
+    padding: 5px 10px;
 }
-.time {
-    font-size: 12px;
-    color: gray;
-    float: right;
+
+.chat {
+    height: 300px;
+    overflow-y: auto;
+    border: 1px solid #ddd;
+    margin: 10px 0;
+    padding: 10px;
+}
+
+.msg {
+    margin: 5px 0;
+}
+
+.me {
+    text-align: right;
+    color: blue;
 }
 </style>
 </head>
@@ -66,17 +47,22 @@ button {
 <body>
 
 <div class="container">
-    <h3>Панель</h3>
 
-    <input id="name" placeholder="Имя">
-    <input id="email" placeholder="Email">
+<h3>Выбери пользователя</h3>
 
-    <button id="mainBtn">Опубликовать</button>
+<div class="users">
+    <button onclick="selectUser('Азамат')">Азамат</button>
+    <button onclick="selectUser('Максим')">Максим</button>
 </div>
 
-<input id="search" placeholder="🔍 Поиск..." style="margin-top:10px; max-width:500px; width:100%; padding:10px;">
+<h4 id="chatWith"></h4>
 
-<div id="feed" style="max-width:500px; width:100%;"></div>
+<div class="chat" id="chat"></div>
+
+<input id="message" placeholder="Сообщение">
+<button onclick="sendMessage()">Отправить</button>
+
+</div>
 
 <script type="module">
 
@@ -86,18 +72,11 @@ import {
     getFirestore,
     collection,
     addDoc,
-    query,
-    orderBy,
     onSnapshot,
-    doc,
-    updateDoc,
-    deleteDoc,
-    increment,
-    serverTimestamp
+    query,
+    orderBy
 } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 
-
-// 🔥 ТВОЙ FIREBASE CONFIG
 const firebaseConfig = {
   apiKey: "AIzaSyBPnoCcL-TUYTdYPaJunewfsaWIylyDE7w",
   authDomain: "test-da803.firebaseapp.com",
@@ -107,119 +86,71 @@ const firebaseConfig = {
   appId: "1:501020279316:web:7acd5a849fcd0df318dd01",
   measurementId: "G-XYN6569D33"
 };
-
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-let allPosts = [];
+// 👤 текущий пользователь (можешь менять)
+const currentUser = "Максим";
 
-// ✅ ВАЛИДАЦИЯ
-function validate(name, email) {
-    if (name.length < 2) return alert("Имя короткое");
-    if (!email.includes("@")) return alert("Email неверный");
-    return true;
-}
+let currentChat = null;
 
-// ✅ ДОБАВИТЬ
-document.getElementById("mainBtn").onclick = async () => {
+// 📌 выбор пользователя
+window.selectUser = (user) => {
+    currentChat = [currentUser, user].sort().join("_");
+    document.getElementById("chatWith").innerText = "Чат с: " + user;
 
-    const name = document.getElementById("name").value.trim();
-    const email = document.getElementById("email").value.trim();
-
-    if (!validate(name, email)) return;
-
-    await addDoc(collection(db, "posts"), {
-        name,
-        email,
-        likes: 0,
-        createdAt: serverTimestamp()
-    });
-
-    document.getElementById("name").value = "";
-    document.getElementById("email").value = "";
+    loadMessages();
 };
 
-// ✅ УДАЛИТЬ
-window.deletePost = async (id) => {
-    await deleteDoc(doc(db, "posts", id));
+// 📤 отправка
+window.sendMessage = async () => {
+    const text = document.getElementById("message").value;
+
+    if (!text || !currentChat) return;
+
+    await addDoc(collection(db, "messages"), {
+        chatId: currentChat,
+        sender: currentUser,
+        text: text,
+        time: new Date()
+    });
+
+    document.getElementById("message").value = "";
 };
 
-// ✅ ЛАЙК
-window.likePost = async (id) => {
-    await updateDoc(doc(db, "posts", id), {
-        likes: increment(1)
-    });
-};
+// 📥 загрузка
+function loadMessages() {
 
-// ✅ РЕДАКТИРОВАТЬ
-window.editPost = async (id, oldName) => {
-    const newName = prompt("Новое имя:", oldName);
-    if (!newName) return;
+    const q = query(collection(db, "messages"), orderBy("time"));
 
-    await updateDoc(doc(db, "posts", id), {
-        name: newName
-    });
-};
+    onSnapshot(q, (snap) => {
 
-// ✅ РЕНДЕР
-function render(posts) {
-    const feed = document.getElementById("feed");
-    feed.innerHTML = "";
+        const chat = document.getElementById("chat");
+        chat.innerHTML = "";
 
-    posts.forEach(p => {
-        let time = "...";
+        snap.forEach(doc => {
 
-        if (p.createdAt?.toDate) {
-            time = p.createdAt.toDate().toLocaleString();
-        }
+            const data = doc.data();
 
-        feed.innerHTML += `
-        <div class="post">
-            <span class="time">${time}</span>
-            <b>${p.name}</b>
-            <p>${p.email}</p>
+            if (data.chatId !== currentChat) return;
 
-            <button class="like-btn" onclick="likePost('${p.id}')">
-                👍 ${p.likes || 0}
-            </button>
+            const div = document.createElement("div");
+            div.className = "msg";
 
-            <button onclick="editPost('${p.id}', '${p.name}')">✏️</button>
-            <button onclick="deletePost('${p.id}')">🗑</button>
-        </div>
-        `;
-    });
-}
+            if (data.sender === currentUser) {
+                div.classList.add("me");
+            }
 
-// ✅ REALTIME
-const q = query(collection(db, "posts"), orderBy("createdAt", "desc"));
+            div.innerText = data.sender + ": " + data.text;
 
-onSnapshot(q, (snap) => {
-    allPosts = [];
-
-    snap.forEach(docItem => {
-        allPosts.push({
-            id: docItem.id,
-            ...docItem.data()
+            chat.appendChild(div);
         });
+
+        chat.scrollTop = chat.scrollHeight;
     });
-
-    render(allPosts);
-});
-
-// ✅ ПОИСК
-document.getElementById("search").addEventListener("input", (e) => {
-
-    const val = e.target.value.toLowerCase();
-
-    if (!val) return render(allPosts);
-
-    const filtered = allPosts.filter(p =>
-        p.name.toLowerCase().includes(val)
-    );
-
-    render(filtered);
-});
+}
 
 </script>
+
 </body>
 </html>
