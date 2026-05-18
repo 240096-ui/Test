@@ -3,18 +3,16 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
   <title>Монитор статусов</title>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <style>
-
     body{
       margin:0;
       padding:40px;
-      background:#f3f4f6;
       font-family:Arial;
+      background:#f3f4f6;
       display:flex;
       flex-direction:column;
       align-items:center;
@@ -23,21 +21,18 @@
     .card{
       width:350px;
       background:white;
-      border-radius:14px;
       padding:20px;
+      border-radius:14px;
       margin-bottom:20px;
       box-shadow:0 4px 15px rgba(0,0,0,0.1);
     }
 
-    h2{
-      margin-top:0;
-    }
+    h2{margin-top:0}
 
     .buttons{
       display:grid;
       grid-template-columns:1fr 1fr;
       gap:10px;
-      margin-top:15px;
     }
 
     button{
@@ -45,188 +40,120 @@
       padding:12px;
       border-radius:10px;
       cursor:pointer;
-      font-weight:bold;
       color:white;
-      font-size:15px;
+      font-weight:bold;
     }
 
-    .online{
-      background:#22c55e;
-    }
+    .online{background:#22c55e}
+    .busy{background:#eab308;color:black}
+    .away{background:#06b6d4}
+    .offline{background:#6b7280}
 
-    .busy{
-      background:#eab308;
-      color:black;
-    }
-
-    .away{
-      background:#06b6d4;
-    }
-
-    .offline{
-      background:#6b7280;
-    }
-
-    ul{
-      list-style:none;
-      padding:0;
-    }
-
+    ul{list-style:none;padding:0}
     li{
       padding:10px;
       margin-bottom:8px;
       background:#f9fafb;
       border-radius:8px;
     }
-
   </style>
 </head>
+
 <body>
 
   <div class="card">
-
     <h2>Мой профиль</h2>
-
-    <div id="me">
-      Загрузка...
-    </div>
+    <div id="me">Загрузка...</div>
 
     <div class="buttons">
-
-      <button
-        class="online"
-        onclick="setStatus('Онлайн')">
-        Онлайн
-      </button>
-
-      <button
-        class="busy"
-        onclick="setStatus('Занят')">
-        Занят
-      </button>
-
-      <button
-        class="away"
-        onclick="setStatus('Отошел')">
-        Отошел
-      </button>
-
-      <button
-        class="offline"
-        onclick="setStatus('Не в сети')">
-        Не в сети
-      </button>
-
+      <button class="online" onclick="setStatus('Онлайн')">Онлайн</button>
+      <button class="busy" onclick="setStatus('Занят')">Занят</button>
+      <button class="away" onclick="setStatus('Отошел')">Отошел</button>
+      <button class="offline" onclick="setStatus('Не в сети')">Не в сети</button>
     </div>
-
   </div>
 
   <div class="card">
-
     <h2>Монитор группы</h2>
-
     <ul id="users"></ul>
-
   </div>
 
-  <script>
+<script>
 
-    // ============================
-    // SUPABASE
-    // ============================
+  // ======================
+  // SUPABASE SETTINGS
+  // ======================
 
-    const SUPABASE_URL =
-    'https://iyjdlgxhocscvwbcwrtc.supabase.co'
+  const SUPABASE_URL =
+    'https://lyjdlgxhocscvwbcwrtc.supabase.co'
 
-    const SUPABASE_ANON_KEY =
-    'sb_publishable_G8n7TPQh594HXMLL9yCCHw_r6_gEAUY'
+  const SUPABASE_ANON_KEY =
+    'ВСТАВЬ_ANON_KEY_СЮДА'
 
-    // ВСТАВЬ СВОЙ UUID ИЗ ТАБЛИЦЫ profiles
-    const MY_USER_ID =
-    'fb79ffde-8cfa-456e-8832-996156d04887'
+  const MY_USER_ID =
+    'ВСТАВЬ_UUID_СЮДА'
 
-    // ============================
+  // ======================
 
-    const client =
-      supabase.createClient(
-        SUPABASE_URL,
-        SUPABASE_ANON_KEY
-      )
+  const client = supabase.createClient(
+    SUPABASE_URL,
+    SUPABASE_ANON_KEY
+  )
 
-    async function loadUsers(){
+  async function loadUsers(){
 
-      const { data, error } =
-        await client
-          .from('profiles')
-          .select('*')
+    const { data, error } =
+      await client.from('profiles').select('*')
 
-      if(error){
-        console.log(error)
-        return
-      }
-
-      const users =
-        document.getElementById('users')
-
-      users.innerHTML = ''
-
-      data.forEach(user => {
-
-        const li =
-          document.createElement('li')
-
-        li.textContent =
-          user.username + ' — ' + user.status
-
-        users.appendChild(li)
-
-        if(user.id === MY_USER_ID){
-
-          document.getElementById('me')
-            .textContent =
-            user.username + ' — ' + user.status
-        }
-
-      })
-
+    if(error){
+      console.log(error)
+      document.getElementById('me').textContent =
+        'Ошибка загрузки'
+      return
     }
 
-    async function setStatus(status){
+    const list = document.getElementById('users')
+    list.innerHTML = ''
 
-      const { error } =
-        await client
-          .from('profiles')
-          .update({
-            status: status
-          })
-          .eq('id', MY_USER_ID)
+    data.forEach(user => {
 
-      if(error){
-        console.log(error)
+      const li = document.createElement('li')
+      li.textContent = `${user.username} — ${user.status}`
+      list.appendChild(li)
+
+      if(user.id === MY_USER_ID){
+        document.getElementById('me').textContent =
+          `${user.username} — ${user.status}`
       }
 
-    }
+    })
+  }
 
-    // REALTIME
+  async function setStatus(status){
 
-    client
-      .channel('profiles-channel')
-      .on(
-        'postgres_changes',
-        {
-          event:'*',
-          schema:'public',
-          table:'profiles'
-        },
-        payload => {
-          loadUsers()
-        }
-      )
-      .subscribe()
+    await client
+      .from('profiles')
+      .update({ status })
+      .eq('id', MY_USER_ID)
 
-    loadUsers()
+  }
 
-  </script>
+  client
+    .channel('profiles')
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'profiles'
+      },
+      () => loadUsers()
+    )
+    .subscribe()
+
+  loadUsers()
+
+</script>
 
 </body>
 </html>
