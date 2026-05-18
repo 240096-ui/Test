@@ -1,187 +1,230 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
   <title>Монитор статусов</title>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #f3f4f6;
-      padding: 40px;
+
+    body{
+      margin:0;
+      padding:40px;
+      background:#f3f4f6;
+      font-family:Arial;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
     }
 
-    .card {
-      background: white;
-      padding: 20px;
-      border-radius: 12px;
-      width: 320px;
-      margin-bottom: 20px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    .card{
+      width:350px;
+      background:white;
+      border-radius:14px;
+      padding:20px;
+      margin-bottom:20px;
+      box-shadow:0 4px 15px rgba(0,0,0,0.1);
     }
 
-    h2 {
-      margin-top: 0;
+    h2{
+      margin-top:0;
     }
 
-    .buttons {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
-      margin-top: 15px;
+    .buttons{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:10px;
+      margin-top:15px;
     }
 
-    button {
-      border: none;
-      padding: 10px;
-      border-radius: 8px;
-      color: white;
-      cursor: pointer;
-      font-weight: bold;
+    button{
+      border:none;
+      padding:12px;
+      border-radius:10px;
+      cursor:pointer;
+      font-weight:bold;
+      color:white;
+      font-size:15px;
     }
 
-    .online {
-      background: #22c55e;
+    .online{
+      background:#22c55e;
     }
 
-    .busy {
-      background: #eab308;
-      color: black;
+    .busy{
+      background:#eab308;
+      color:black;
     }
 
-    .away {
-      background: #06b6d4;
+    .away{
+      background:#06b6d4;
     }
 
-    .offline {
-      background: #6b7280;
+    .offline{
+      background:#6b7280;
     }
 
-    ul {
-      padding-left: 20px;
+    ul{
+      list-style:none;
+      padding:0;
     }
+
+    li{
+      padding:10px;
+      margin-bottom:8px;
+      background:#f9fafb;
+      border-radius:8px;
+    }
+
   </style>
 </head>
 <body>
 
   <div class="card">
+
     <h2>Мой профиль</h2>
 
-    <div id="myName">Загрузка...</div>
+    <div id="me">
+      Загрузка...
+    </div>
 
     <div class="buttons">
-      <button class="online" onclick="updateStatus('Онлайн')">
+
+      <button
+        class="online"
+        onclick="setStatus('Онлайн')">
         Онлайн
       </button>
 
-      <button class="busy" onclick="updateStatus('Занят')">
+      <button
+        class="busy"
+        onclick="setStatus('Занят')">
         Занят
       </button>
 
-      <button class="away" onclick="updateStatus('Отошел')">
+      <button
+        class="away"
+        onclick="setStatus('Отошел')">
         Отошел
       </button>
 
-      <button class="offline" onclick="updateStatus('Не в сети')">
+      <button
+        class="offline"
+        onclick="setStatus('Не в сети')">
         Не в сети
       </button>
+
     </div>
+
   </div>
 
   <div class="card">
+
     <h2>Монитор группы</h2>
 
-    <ul id="usersList"></ul>
+    <ul id="users"></ul>
+
   </div>
 
   <script>
-    // =========================
-    // ВСТАВЬТЕ СВОИ ДАННЫЕ
-    // =========================
 
-    const SUPABASE_URL = 'https://YOUR_PROJECT.supabase.co';
-    const SUPABASE_ANON_KEY = 'YOUR_ANON_KEY';
+    // ============================
+    // SUPABASE
+    // ============================
 
-    // ID из таблицы profiles
-    const MY_USER_ID = 'YOUR_USER_ID';
+    const SUPABASE_URL =
+    'https://iyjdlgxhocscvwbcwrtc.supabase.co'
 
-    // =========================
+    const SUPABASE_ANON_KEY =
+    'sb_publishable_G8n7TPQh594HXMLL9yCCHw_r6_gEAUY'
 
-    const client = supabase.createClient(
-      SUPABASE_URL,
-      SUPABASE_ANON_KEY
-    );
+    // ВСТАВЬ СВОЙ UUID ИЗ ТАБЛИЦЫ profiles
+    const MY_USER_ID =
+    '0'
 
-    async function loadProfiles() {
+    // ============================
 
-      const { data, error } = await client
-        .from('profiles')
-        .select('*');
+    const client =
+      supabase.createClient(
+        SUPABASE_URL,
+        SUPABASE_ANON_KEY
+      )
 
-      if (error) {
-        console.error(error);
-        return;
+    async function loadUsers(){
+
+      const { data, error } =
+        await client
+          .from('profiles')
+          .select('*')
+
+      if(error){
+        console.log(error)
+        return
       }
 
-      renderProfiles(data);
-    }
+      const users =
+        document.getElementById('users')
 
-    function renderProfiles(profiles) {
+      users.innerHTML = ''
 
-      const list = document.getElementById('usersList');
-      list.innerHTML = '';
+      data.forEach(user => {
 
-      profiles.forEach(profile => {
+        const li =
+          document.createElement('li')
 
-        const li = document.createElement('li');
         li.textContent =
-          `${profile.username}: ${profile.status}`;
+          user.username + ' — ' + user.status
 
-        list.appendChild(li);
+        users.appendChild(li)
 
-        // отображение своего имени
-        if (profile.id === MY_USER_ID) {
-          document.getElementById('myName').textContent =
-            `${profile.username} — ${profile.status}`;
+        if(user.id === MY_USER_ID){
+
+          document.getElementById('me')
+            .textContent =
+            user.username + ' — ' + user.status
         }
-      });
+
+      })
+
     }
 
-    async function updateStatus(newStatus) {
+    async function setStatus(status){
 
-      const { error } = await client
-        .from('profiles')
-        .update({
-          status: newStatus
-        })
-        .eq('id', MY_USER_ID);
+      const { error } =
+        await client
+          .from('profiles')
+          .update({
+            status: status
+          })
+          .eq('id', MY_USER_ID)
 
-      if (error) {
-        console.error(error);
+      if(error){
+        console.log(error)
       }
+
     }
 
-    // realtime обновления
+    // REALTIME
+
     client
       .channel('profiles-channel')
       .on(
         'postgres_changes',
         {
-          event: '*',
-          schema: 'public',
-          table: 'profiles'
+          event:'*',
+          schema:'public',
+          table:'profiles'
         },
-        () => {
-          loadProfiles();
+        payload => {
+          loadUsers()
         }
       )
-      .subscribe();
+      .subscribe()
 
-    // первая загрузка
-    loadProfiles();
+    loadUsers()
 
   </script>
 
