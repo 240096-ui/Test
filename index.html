@@ -1,157 +1,174 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Монитор статусов</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Монитор статусов</title>
 
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-  <style>
-    body{
-      margin:0;
-      padding:40px;
-      font-family:Arial;
-      background:#f3f4f6;
-      display:flex;
-      flex-direction:column;
-      align-items:center;
-    }
+<style>
+body{
+  margin:0;
+  padding:40px;
+  font-family:Arial,sans-serif;
+  background:#f3f4f6;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+}
 
-    .card{
-      width:350px;
-      background:white;
-      padding:20px;
-      border-radius:14px;
-      margin-bottom:20px;
-      box-shadow:0 4px 15px rgba(0,0,0,0.1);
-    }
+.card{
+  width:350px;
+  background:white;
+  padding:20px;
+  border-radius:14px;
+  margin-bottom:20px;
+  box-shadow:0 4px 15px rgba(0,0,0,.1);
+}
 
-    h2{margin-top:0}
+.buttons{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+}
 
-    .buttons{
-      display:grid;
-      grid-template-columns:1fr 1fr;
-      gap:10px;
-    }
+button{
+  border:none;
+  padding:12px;
+  border-radius:10px;
+  cursor:pointer;
+  color:white;
+  font-weight:bold;
+}
 
-    button{
-      border:none;
-      padding:12px;
-      border-radius:10px;
-      cursor:pointer;
-      color:white;
-      font-weight:bold;
-    }
+.online{background:#22c55e}
+.busy{background:#eab308;color:black}
+.away{background:#06b6d4}
+.offline{background:#6b7280}
 
-    .online{background:#22c55e}
-    .busy{background:#eab308;color:black}
-    .away{background:#06b6d4}
-    .offline{background:#6b7280}
+ul{
+  list-style:none;
+  padding:0;
+}
 
-    ul{list-style:none;padding:0}
-    li{
-      padding:10px;
-      margin-bottom:8px;
-      background:#f9fafb;
-      border-radius:8px;
-    }
-  </style>
+li{
+  padding:10px;
+  margin-bottom:8px;
+  background:#f9fafb;
+  border-radius:8px;
+}
+</style>
 </head>
 
 <body>
 
-  <div class="card">
-    <h2>Мой профиль</h2>
-    <div id="me">Загрузка...</div>
+<div class="card">
+  <h2>Мой профиль</h2>
+  <div id="me">Загрузка...</div>
 
-    <div class="buttons">
-      <button class="online" onclick="setStatus('Онлайн')">Онлайн</button>
-      <button class="busy" onclick="setStatus('Занят')">Занят</button>
-      <button class="away" onclick="setStatus('Отошел')">Отошел</button>
-      <button class="offline" onclick="setStatus('Не в сети')">Не в сети</button>
-    </div>
+  <div class="buttons">
+    <button class="online" onclick="setStatus('Онлайн')">Онлайн</button>
+    <button class="busy" onclick="setStatus('Занят')">Занят</button>
+    <button class="away" onclick="setStatus('Отошел')">Отошел</button>
+    <button class="offline" onclick="setStatus('Не в сети')">Не в сети</button>
   </div>
+</div>
 
-  <div class="card">
-    <h2>Монитор группы</h2>
-    <ul id="users"></ul>
-  </div>
+<div class="card">
+  <h2>Монитор группы</h2>
+  <ul id="users"></ul>
+</div>
 
 <script>
 
-  // ======================
-  // SUPABASE SETTINGS
-  // ======================
+const SUPABASE_URL =
+'https://lyjdlgxhocscvwbcwrtc.supabase.co';
 
-  const SUPABASE_URL =
-    'https://lyjdlgxhocscvwbcwrtc.supabase.co'
+const SUPABASE_ANON_KEY =
+'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx5amRsZ3hob2NzY3Z3YmN3cnRjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY2ODQzMTEsImV4cCI6MjA5MjI2MDMxMX0.X0ua0z3bDdOzxR6gCTMhRa8La5RhDuKzMMBlH60_1R0';
 
-  const SUPABASE_ANON_KEY =
-    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx5amRsZ3hob2NzY3Z3YmN3cnRjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY2ODQzMTEsImV4cCI6MjA5MjI2MDMxMX0.X0ua0z3bDdOzxR6gCTMhRa8La5RhDuKzMMBlH60_1R0'
+const client = supabase.createClient(
+  SUPABASE_URL,
+  SUPABASE_ANON_KEY
+);
 
-  const MY_USER_ID =
-    'ВСТАВЬ_UUID_СЮДА'
+let currentUser = null;
 
-  // ======================
+async function loadUsers(){
 
-  const client = supabase.createClient(
-    SUPABASE_URL,
-    SUPABASE_ANON_KEY
-  )
+  const { data, error } = await client
+    .from('profiles')
+    .select('*');
 
-  async function loadUsers(){
+  if(error){
+    console.error(error);
+    document.getElementById('me').textContent =
+      'Ошибка загрузки';
+    return;
+  }
 
-    const { data, error } =
-      await client.from('profiles').select('*')
+  const list = document.getElementById('users');
+  list.innerHTML = '';
 
-    if(error){
-      console.log(error)
-      document.getElementById('me').textContent =
-        'Ошибка загрузки'
-      return
+  if(data.length > 0){
+    currentUser = data[0];
+
+    document.getElementById('me').textContent =
+      `${currentUser.username} — ${currentUser.status}`;
+  }
+
+  data.forEach(user => {
+
+    const li = document.createElement('li');
+
+    li.textContent =
+      `${user.username} — ${user.status}`;
+
+    list.appendChild(li);
+  });
+}
+
+async function setStatus(status){
+
+  if(!currentUser){
+    alert('Пользователь не найден');
+    return;
+  }
+
+  const { error } = await client
+    .from('profiles')
+    .update({ status })
+    .eq('id', currentUser.id);
+
+  if(error){
+    console.error('UPDATE ERROR:', error);
+    alert(error.message);
+    return;
+  }
+
+  loadUsers();
+}
+
+client
+  .channel('profiles')
+  .on(
+    'postgres_changes',
+    {
+      event: '*',
+      schema: 'public',
+      table: 'profiles'
+    },
+    payload => {
+      console.log(payload);
+      loadUsers();
     }
+  )
+  .subscribe(status => {
+    console.log('Realtime:', status);
+  });
 
-    const list = document.getElementById('users')
-    list.innerHTML = ''
-
-    data.forEach(user => {
-
-      const li = document.createElement('li')
-      li.textContent = `${user.username} — ${user.status}`
-      list.appendChild(li)
-
-      if(user.id === MY_USER_ID){
-        document.getElementById('me').textContent =
-          `${user.username} — ${user.status}`
-      }
-
-    })
-  }
-
-  async function setStatus(status){
-
-    await client
-      .from('profiles')
-      .update({ status })
-      .eq('id', MY_USER_ID)
-
-  }
-
-  client
-    .channel('profiles')
-    .on(
-      'postgres_changes',
-      {
-        event: '*',
-        schema: 'public',
-        table: 'profiles'
-      },
-      () => loadUsers()
-    )
-    .subscribe()
-
-  loadUsers()
+loadUsers();
 
 </script>
 
