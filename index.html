@@ -4,198 +4,44 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Монитор статусов</title>
-
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
 <style>
 body {
-  margin: 0;
-  padding: 20px;
+  margin: 0; padding: 20px;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  background: #f4f6f9;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+  background: #f4f6f9; display: flex; flex-direction: column; align-items: center;
 }
-
-/* Элегантные раздельные карточки из макета */
 .card {
-  width: 360px;
-  background: white;
-  padding: 24px;
-  border-radius: 24px;
-  margin-bottom: 16px;
-  box-shadow: 0 4px 20px rgba(0,0,0,.03);
-  box-sizing: border-box;
+  width: 360px; background: white; padding: 24px; border-radius: 24px;
+  margin-bottom: 16px; box-shadow: 0 4px 20px rgba(0,0,0,.03); box-sizing: border-box;
 }
-
-.auth-card {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-}
-
-.user-name {
-  font-size: 20px;
-  font-weight: 700;
-  color: #111827;
-  margin-bottom: 16px;
-  text-align: center;
-}
-
-.timer-block {
-  font-size: 26px;
-  font-weight: bold;
-  color: #2563eb;
-  margin-bottom: 20px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-}
-
-/* Кнопки один в один как на скрине */
+.auth-card { display: flex; flex-direction: column; align-items: center; text-align: center; }
+.user-name { font-size: 20px; font-weight: 700; color: #111827; margin-bottom: 16px; text-align: center; }
+.timer-block { font-size: 26px; font-weight: bold; color: #2563eb; margin-bottom: 20px; display: flex; align-items: center; justify-content: center; gap: 8px; }
 .btn {
-  width: 100%;
-  border: none;
-  padding: 14px;
-  border-radius: 12px;
-  cursor: pointer;
-  color: white;
-  font-weight: bold;
-  font-size: 15px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  margin-bottom: 12px;
-  transition: opacity 0.2s;
+  width: 100%; border: none; padding: 14px; border-radius: 12px; cursor: pointer;
+  color: white; font-weight: bold; font-size: 15px; display: flex; align-items: center; justify-content: center; gap: 6px; margin-bottom: 12px;
 }
-.btn:hover { opacity: 0.9; }
-
-.btn-start { background: #dc2626; } /* Красная 'Завершить сессию' */
-.btn-start.inactive { background: #22c55e; } /* Зеленая 'Начать сессию' */
-
-.btn-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-  width: 100%;
-}
-
-.btn-break { background: #fbc02d; color: #111827; margin: 0; } /* Желтая 'Перерыв' */
-.btn-logout { background: #78909c; margin: 0; } /* Серая 'Выход' */
+.btn-start { background: #dc2626; }
+.btn-start.inactive { background: #22c55e; }
+.btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; width: 100%; }
+.btn-break { background: #fbc02d; color: #111827; margin: 0; }
+.btn-logout { background: #78909c; margin: 0; }
 .btn-google { background: #4285F4; margin-top: 10px; }
-
-/* Блок монитора группы */
-.section-title {
-  font-size: 16px;
-  font-weight: 700;
-  color: #111827;
-  margin-top: 0;
-  margin-bottom: 20px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-}
-
-.user-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 8px 0;
-  border-bottom: 1px solid #f8fafc;
-}
-.user-item:last-child { border-bottom: none; }
-
-.user-left {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 16px;
-  font-weight: 700;
-  color: #111827;
-}
-
-.dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: #b0bec5;
-}
+.section-title { font-size: 16px; font-weight: 700; color: #111827; margin-top: 0; margin-bottom: 20px; display: flex; align-items: center; justify-content: center; gap: 6px; }
+.user-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #f8fafc; }
+.user-left { display: flex; align-items: center; gap: 10px; font-size: 16px; font-weight: 700; color: #111827; }
+.dot { width: 10px; height: 10px; border-radius: 50%; background: #b0bec5; }
 .dot.online { background: #22c55e; }
 .dot.break { background: #fbc02d; }
-
-.user-right {
-  text-align: right;
-}
-
-.loc-text {
-  font-size: 13px;
-  color: #78909c;
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 4px;
-}
-
-.time-text {
-  font-size: 11px;
-  color: #2563eb;
-  margin-top: 2px;
-}
-
-/* Чат */
-.chat-window {
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  border-radius: 12px;
-  height: 160px;
-  overflow-y: auto;
-  padding: 14px;
-  margin-bottom: 12px;
-  text-align: left;
-}
-
-.msg {
-  font-size: 14px;
-  margin-bottom: 10px;
-  color: #334155;
-  line-height: 1.4;
-}
-.msg strong { color: #0f172a; }
-
-.input-container {
-  display: flex;
-  gap: 8px;
-}
-
-.input-field {
-  flex: 1;
-  border: 1px solid #e2e8f0;
-  padding: 12px 14px;
-  border-radius: 12px;
-  outline: none;
-  font-size: 14px;
-  background: #f8fafc;
-}
-
-.btn-send {
-  background: #2ecc71;
-  border: none;
-  width: 46px;
-  height: 46px;
-  border-radius: 12px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  font-size: 18px;
-}
+.user-right { text-align: right; }
+.loc-text { font-size: 13px; color: #78909c; display: flex; align-items: center; justify-content: flex-end; gap: 4px; }
+.time-text { font-size: 11px; color: #2563eb; margin-top: 2px; }
+.chat-window { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; height: 160px; overflow-y: auto; padding: 14px; margin-bottom: 12px; }
+.msg { font-size: 14px; margin-bottom: 10px; color: #334155; }
+.input-container { display: flex; gap: 8px; }
+.input-field { flex: 1; border: 1px solid #e2e8f0; padding: 12px 14px; border-radius: 12px; outline: none; background: #f8fafc; }
+.btn-send { background: #2ecc71; border: none; width: 46px; height: 46px; border-radius: 12px; cursor: pointer; color: white; display: flex; align-items: center; justify-content: center; }
 </style>
 </head>
 <body>
@@ -205,15 +51,10 @@ body {
     <div class="user-name">Войдите в систему</div>
     <button class="btn btn-google" onclick="login()">🔑 Войти через Google</button>
   </div>
-
   <div id="logged-in-view" style="display: none;">
     <div class="user-name" id="user-fullname">Загрузка...</div>
-    <div class="timer-block">
-      <span id="timer-icon">⏱️</span> <span id="timer-display">00 сек.</span>
-    </div>
-    
+    <div class="timer-block">⏱️ <span id="timer-display">00 сек.</span></div>
     <button id="main-action-btn" class="btn btn-start" onclick="handleSessionToggle()">⛔ Завершить сессию</button>
-    
     <div class="btn-row">
       <button class="btn btn-break" onclick="goBreak()">☕ Перерыв</button>
       <button class="btn btn-logout" onclick="logout()">Выход</button>
@@ -236,27 +77,18 @@ body {
 </div>
 
 <script>
-// ВАШИ КЛЮЧИ ПОЛНОСТЬЮ СОХРАНЕНЫ
 const SUPABASE_URL = 'https://lyjdlgxhocscvwbcwrtc.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx5amRsZ3hob2NzY3Z3YmN3cnRjIiwicm9sZSI6Imfub24iLCJpYXQiOjE3NzY2ODQzMTEsImV4cCI6MjA5MjI2MDMxMX0.X0ua0z3bDdOzxR6gCTMhRa8La5RhDuKzMMBlH60_1R0';
 
 const client = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-let userObj = null;
-let profileObj = null;
-let seconds = 0;
-let timer = null;
-let working = true; 
+let userObj = null, profileObj = null, seconds = 0, timer = null, working = true;
 
 async function authStateInit() {
-  // Очищаем хэш токена из адресной строки после возврата от Google, чтобы ссылка оставалась красивой
   if (window.location.hash.includes('access_token=')) {
     const cleanUrl = window.location.href.split('#')[0];
     window.history.replaceState({}, document.title, cleanUrl);
   }
-
   const { data: { user } } = await client.auth.getUser();
-  
   if (user) {
     userObj = user;
     document.getElementById('logged-out-view').style.display = 'none';
@@ -266,16 +98,17 @@ async function authStateInit() {
     document.getElementById('logged-out-view').style.display = 'flex';
     document.getElementById('logged-in-view').style.display = 'none';
   }
-  
   getGroupData();
   getMessages();
 }
 
 async function login() {
-  // Использование location.href заставляет Supabase вернуть пользователя именно на вашу страницу в GitHub Pages!
   await client.auth.signInWithOAuth({
     provider: 'google',
-    options: { redirectTo: window.location.href }
+    options: { 
+      // ОБЯЗАТЕЛЬНО ЗАМЕНИТЕ ССЫЛКУ НИЖЕ НА ВАШ ГИТХАБ
+      redirectTo: 'https://ваш-логин.github.io/название-репозитория/' 
+    }
   });
 }
 
@@ -290,10 +123,8 @@ async function fetchProfile() {
   const { data } = await client.from('profiles').select('*').eq('id', userObj.id).single();
   if (data) {
     profileObj = data;
-    document.getElementById('user-fullname').textContent = data.username;
-    if (data.status === 'Работает' || data.status === 'Онлайн') {
-      runTimer();
-    }
+    document.getElementById('user-fullname').textContent = data.username || userObj.email;
+    if (data.status === 'Работает' || data.status === 'Онлайн') runTimer();
   }
 }
 
@@ -301,8 +132,7 @@ function runTimer() {
   clearInterval(timer);
   timer = setInterval(() => {
     seconds++;
-    let m = Math.floor(seconds / 60);
-    let s = seconds % 60;
+    let m = Math.floor(seconds / 60), s = seconds % 60;
     document.getElementById('timer-display').textContent = m > 0 ? `${m}м ${s}с` : `${s} сек.`;
   }, 1000);
 }
@@ -310,17 +140,11 @@ function runTimer() {
 async function handleSessionToggle() {
   const b = document.getElementById('main-action-btn');
   if (working) {
-    working = false;
-    b.textContent = "▶️ Начать сессию";
-    b.className = "btn btn-start inactive";
-    clearInterval(timer);
-    seconds = 0;
-    document.getElementById('timer-display').textContent = "00 сек.";
+    working = false; b.textContent = "▶️ Начать сессию"; b.className = "btn btn-start inactive";
+    clearInterval(timer); seconds = 0; document.getElementById('timer-display').textContent = "00 сек.";
     await client.from('profiles').update({ status: 'Не в сети' }).eq('id', userObj.id);
   } else {
-    working = true;
-    b.textContent = "⛔ Завершить сессию";
-    b.className = "btn btn-start";
+    working = true; b.textContent = "⛔ Завершить сессию"; b.className = "btn btn-start";
     runTimer();
     await client.from('profiles').update({ status: 'Работает' }).eq('id', userObj.id);
   }
@@ -336,24 +160,18 @@ async function getGroupData() {
   const container = document.getElementById('group-list');
   container.innerHTML = '';
   if (!data) return;
-
   data.forEach(u => {
     let stateStyle = 'dot';
     if (u.status === 'Работает' || u.status === 'Онлайн') stateStyle += ' online';
     if (u.status === 'Перерыв') stateStyle += ' break';
-
     container.innerHTML += `
       <div class="user-item">
-        <div class="user-left">
-          <div class="${stateStyle}"></div>
-          <span>${u.username}</span>
-        </div>
+        <div class="user-left"><div class="${stateStyle}"></div><span>${u.username || 'Пользователь'}</span></div>
         <div class="user-right">
           <div class="loc-text">🏠 ${u.location || 'Дома'}</div>
           <div class="time-text">⏱️ 0ч 0м 0с</div>
         </div>
-      </div>
-    `;
+      </div>`;
   });
 }
 
@@ -362,9 +180,7 @@ async function getMessages() {
   const view = document.getElementById('chat-messages');
   view.innerHTML = '';
   if (data) {
-    data.forEach(m => {
-      view.innerHTML += `<div class="msg"><strong>${m.username}:</strong> ${m.text}</div>`;
-    });
+    data.forEach(m => { view.innerHTML += `<div class="msg"><strong>${m.username}:</strong> ${m.text}</div>`; });
     view.scrollTop = view.scrollHeight;
   }
 }
@@ -373,17 +189,13 @@ async function sendChat() {
   const el = document.getElementById('message-input');
   const txt = el.value.trim();
   if (!txt || !userObj) return;
-  
   const name = profileObj ? profileObj.username : userObj.email;
   await client.from('messages').insert([{ user_id: userObj.id, username: name, text: txt }]);
   el.value = '';
 }
 
-function checkEnter(e) {
-  if (e.key === 'Enter') sendChat();
-}
+function checkEnter(e) { if (e.key === 'Enter') sendChat(); }
 
-// Слушатели Realtime-обновлений базы
 client.channel('any')
   .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => getGroupData())
   .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, () => getMessages())
@@ -391,6 +203,5 @@ client.channel('any')
 
 authStateInit();
 </script>
-
 </body>
 </html>
