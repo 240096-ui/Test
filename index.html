@@ -84,15 +84,18 @@ const client = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 let userObj = null, profileObj = null, seconds = 0, timer = null, working = true;
 
 async function authStateInit() {
-  if (window.location.hash.includes('access_token=')) {
-    const cleanUrl = window.location.href.split('#')[0];
-    window.history.replaceState({}, document.title, cleanUrl);
-  }
-  const { data: { user } } = await client.auth.getUser();
-  if (user) {
-    userObj = user;
+  // Проверяем сессию железно, чтобы подхватить токен из URL
+  const { data: { session } } = await client.auth.getSession();
+  
+  if (session && session.user) {
+    userObj = session.user;
     document.getElementById('logged-out-view').style.display = 'none';
     document.getElementById('logged-in-view').style.display = 'block';
+    
+    if (window.location.hash.includes('access_token=')) {
+      const cleanUrl = window.location.href.split('#')[0];
+      window.history.replaceState({}, document.title, cleanUrl);
+    }
     await fetchProfile();
   } else {
     document.getElementById('logged-out-view').style.display = 'flex';
@@ -106,8 +109,8 @@ async function login() {
   await client.auth.signInWithOAuth({
     provider: 'google',
     options: { 
-      // ОБЯЗАТЕЛЬНО ЗАМЕНИТЕ ССЫЛКУ НИЖЕ НА ВАШ ГИТХАБ
-      redirectTo: 'https://ваш-логин.github.io/название-репозитория/' 
+      // Твой точный адрес репозитория на гитхабе
+      redirectTo: 'https://240096-ui.github.io/Test/' 
     }
   });
 }
@@ -201,6 +204,7 @@ client.channel('any')
   .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, () => getMessages())
   .subscribe();
 
+// Запуск инициализации при старте страницы
 authStateInit();
 </script>
 </body>
