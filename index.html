@@ -78,20 +78,17 @@ body {
 
 <script>
 const SUPABASE_URL = 'https://lyjdlgxhocscvwbcwrtc.supabase.co';
-// Исправлен сломанный ANON_KEY токен на валидный ключ твоего приложения
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx5amRsZ3hob2NzY3Z3YmN3cnRjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY2ODQzMTEsImV4cCI6MjA5MjI2MDMxMX0.X0ua0z3bDdOzxR6gCTMhRa8La5RhDuKzMMBlH60_1R0';
 
 const client = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 let userObj = null, profileObj = null, seconds = 0, timer = null, working = true;
 
 async function authStateInit() {
-  // Если вернулись от Google, даем полсекунды на усвоение хэша в URL
   if (window.location.hash.includes('access_token=')) {
     await new Promise(resolve => setTimeout(resolve, 500));
   }
 
-  // Берем чистую активную сессию
-  const { data: { session }, error } = await client.auth.getSession();
+  const { data: { session } } = await client.auth.getSession();
 
   if (session && session.user) {
     userObj = session.user;
@@ -129,14 +126,39 @@ async function logout() {
 }
 
 async function fetchProfile() {
-  const { data, error } = await client.from('profiles').select('*').eq('id', userObj.id).single();
-  if (data) {
-    profileObj = data;
-    document.getElementById('user-fullname').textContent = data.username || userObj.email;
-    if (data.status === 'Работает' || data.status === 'Онлайн') runTimer();
+  // Безопасный запрос без .single(), чтобы база не ругалась ошибкой 406
+  const { data: profiles, error } = await client
+    .from('profiles')
+    .select('*')
+    .eq('id', userObj.id);
+  
+  let currentProfile = profiles && profiles.length > 0 ? profiles[0] : null;
+  
+  // Если профиля нет в таблице — автоматически создаем его отсюда
+  if (!currentProfile) {
+    const { data: newProfiles } = await client
+      .from('profiles')
+      .insert([{ 
+        id: userObj.id, 
+        username: userObj.email.split('@')[0], 
+        status: 'Работает',
+        location: 'Дома'
+      }])
+      .select();
+      
+    if (newProfiles && newProfiles.length > 0) {
+      currentProfile = newProfiles[0];
+    }
+  }
+
+  if (currentProfile) {
+    profileObj = currentProfile;
+    document.getElementById('user-fullname').textContent = currentProfile.username || userObj.email;
+    if (currentProfile.status === 'Работает' || currentProfile.status === 'Онлайн') runTimer();
   } else {
     document.getElementById('user-fullname').textContent = userObj.email;
   }
+  
   getGroupData();
   getMessages();
 }
