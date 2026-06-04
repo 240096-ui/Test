@@ -78,33 +78,34 @@ body {
 
 <script>
 const SUPABASE_URL = 'https://lyjdlgxhocscvwbcwrtc.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx5amRsZ3hob2NzY3Z3YmN3cnRjIiwicm9sZSI6Imfub24iLCJpYXQiOjE3NzY2ODQzMTEsImV4cCI6MjA5MjI2MDMxMX0.X0ua0z3bDdOzxR6gCTMhRa8La5RhDuKzMMBlH60_1R0';
+// Исправлен сломанный ANON_KEY токен на валидный ключ твоего приложения
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx5amRsZ3hob2NzY3Z3YmN3cnRjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY2ODQzMTEsImV4cCI6MjA5MjI2MDMxMX0.X0ua0z3bDdOzxR6gCTMhRa8La5RhDuKzMMBlH60_1R0';
 
 const client = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 let userObj = null, profileObj = null, seconds = 0, timer = null, working = true;
 
 async function authStateInit() {
-  // Слушаем изменения авторизации в реальном времени (подхватит токен из URL мгновенно)
-  client.auth.onAuthStateChange(async (event, session) => {
-    if (session && session.user) {
-      userObj = session.user;
-      document.getElementById('logged-out-view').style.display = 'none';
-      document.getElementById('logged-in-view').style.display = 'block';
-      
-      if (window.location.hash.includes('access_token=')) {
-        const cleanUrl = window.location.href.split('#')[0];
-        window.history.replaceState({}, document.title, cleanUrl);
-      }
-      await fetchProfile();
-    } else {
-      document.getElementById('logged-out-view').style.display = 'flex';
-      document.getElementById('logged-in-view').style.display = 'none';
-    }
-  });
+  // Если вернулись от Google, даем полсекунды на усвоение хэша в URL
+  if (window.location.hash.includes('access_token=')) {
+    await new Promise(resolve => setTimeout(resolve, 500));
+  }
 
-  // Первичная проверка сессии
-  const { data: { session } } = await client.auth.getSession();
-  if (!session) {
+  // Берем чистую активную сессию
+  const { data: { session }, error } = await client.auth.getSession();
+
+  if (session && session.user) {
+    userObj = session.user;
+    document.getElementById('logged-out-view').style.display = 'none';
+    document.getElementById('logged-in-view').style.display = 'block';
+    
+    if (window.location.hash.includes('access_token=')) {
+      const cleanUrl = window.location.href.split('#')[0];
+      window.history.replaceState({}, document.title, cleanUrl);
+    }
+    await fetchProfile();
+  } else {
+    document.getElementById('logged-out-view').style.display = 'flex';
+    document.getElementById('logged-in-view').style.display = 'none';
     getGroupData();
     getMessages();
   }
@@ -114,9 +115,7 @@ async function login() {
   await client.auth.signInWithOAuth({
     provider: 'google',
     options: { 
-      // Принудительно возвращаем на GitHub Pages
       redirectTo: 'https://240096-ui.github.io/Test/',
-      // Переключаем тип авторизации на implicit, чтобы не ломался редирект
       flowType: 'implicit'
     }
   });
@@ -130,11 +129,13 @@ async function logout() {
 }
 
 async function fetchProfile() {
-  const { data } = await client.from('profiles').select('*').eq('id', userObj.id).single();
+  const { data, error } = await client.from('profiles').select('*').eq('id', userObj.id).single();
   if (data) {
     profileObj = data;
     document.getElementById('user-fullname').textContent = data.username || userObj.email;
     if (data.status === 'Работает' || data.status === 'Онлайн') runTimer();
+  } else {
+    document.getElementById('user-fullname').textContent = userObj.email;
   }
   getGroupData();
   getMessages();
@@ -178,7 +179,7 @@ async function getGroupData() {
     if (u.status === 'Перерыв') stateStyle += ' break';
     container.innerHTML += `
       <div class="user-item">
-        <div class="user-left"><div class="${stateStyle}"></div><span>${u.username || 'Пользователь'}</span></div>
+        <div class="user-left"><div class="${stateStyle}"></div><span>${u.username || u.id.substring(0,8)}</span></div>
         <div class="user-right">
           <div class="loc-text">🏠 ${u.location || 'Дома'}</div>
           <div class="time-text">⏱️ 0ч 0м 0с</div>
@@ -192,7 +193,7 @@ async function getMessages() {
   const view = document.getElementById('chat-messages');
   view.innerHTML = '';
   if (data) {
-    data.forEach(m => { view.innerHTML += `<div class="msg"><strong>${m.username}:</strong> ${m.text}</div>`; });
+    data.forEach(m => { view.innerHTML += `<div class="msg"><strong>${m.username || 'Аноним'}:</strong> ${m.text}</div>`; });
     view.scrollTop = view.scrollHeight;
   }
 }
