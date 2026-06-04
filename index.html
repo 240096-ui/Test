@@ -159,7 +159,6 @@ body {
   </div>
 </div>
 
-<!-- ДИНАМИЧЕСКИЙ БЛОК ВКЛАДОК -->
 <div class="card">
   <div class="tabs-row">
     <button class="tab-btn active" id="tab-users" onclick="switchTab('users')">👥 Участники</button>
@@ -198,6 +197,9 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 
 const client = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 let userObj = null, profileObj = null, sessionSeconds = 0, totalSeconds = 0, timer = null, working = true, currentTab = 'users';
+
+// Локальный кэш списка пользователей группы
+let localUsersList = [];
 
 async function authStateInit() {
   if (window.location.hash.includes('access_token=')) await new Promise(r => setTimeout(r, 500));
@@ -257,7 +259,12 @@ function runTimer() {
   timer = setInterval(async () => {
     sessionSeconds++;
     totalSeconds++;
+    
+    // Обновляем плашки
     updateStatsGrid();
+    
+    // Вызываем принудительную перерисовку списков, чтобы тикающие секунды рендерились в рейтинге
+    renderListsUI();
     
     // Синхронизируем время с базой каждые 10 секунд
     if (sessionSeconds % 10 === 0) {
@@ -287,7 +294,6 @@ function updateStatsGrid() {
   const msgCount = profileObj ? profileObj.message_count || 0 : 0;
   document.getElementById('stat-messages-count').textContent = msgCount;
   
-  // Считаем открытые ачивки
   let unlocked = 0;
   if (totalSeconds > 0) unlocked++;
   if (totalSeconds >= 60) unlocked++;
@@ -314,6 +320,7 @@ async function changeStatus(newStatus) {
     }
   }
   await client.from('profiles').update({ status: newStatus }).eq('id', userObj.id);
+  refreshData();
 }
 
 function updateStatusUI(status) {
@@ -358,18 +365,33 @@ function switchTab(tab) {
   document.getElementById('tab-content-rating').style.display = tab === 'rating' ? 'block' : 'none';
   document.getElementById('tab-content-achievements').style.display = tab === 'achievements' ? 'block' : 'none';
   
-  refreshData();
+  renderListsUI();
 }
 
 async function refreshData() {
   const { data: users } = await client.from('profiles').select('*');
   if (!users) return;
+  localUsersList = users;
+  renderListsUI();
+}
+
+// Новая изолированная функция отрисовки списков с подменой твоего времени «на лету»
+function renderListsUI() {
+  if (localUsersList.length === 0) return;
+
+  // Модифицируем массив: подставляем текущие тикающие секунды для авторизованного юзера
+  const usersToRender = localUsersList.map(u => {
+    if (userObj && u.id === userObj.id) {
+      return { ...u, total_seconds: totalSeconds };
+    }
+    return u;
+  });
 
   // 1. ВКЛАДКА УЧАСТНИКИ
-  document.getElementById('total-users-count').textContent = users.length;
+  document.getElementById('total-users-count').textContent = usersToRender.length;
   const list = document.getElementById('group-list');
   list.innerHTML = '';
-  users.forEach(u => {
+  usersToRender.forEach(u => {
     let stateStyle = 'dot', statusText = 'Офлайн';
     if (u.status === 'Работает' || u.status === 'Онлайн') { stateStyle += ' online'; statusText = 'В сети'; }
     if (u.status === 'Перерыв') { stateStyle += ' break'; statusText = 'Отошёл'; }
@@ -388,20 +410,20 @@ async function refreshData() {
   // 2. ВКЛАДКА РЕЙТИНГ (Сортировка по времени)
   const ratingList = document.getElementById('rating-list');
   ratingList.innerHTML = '';
-  const sortedUsers = [...users].sort((a,b) => (b.total_seconds || 0) - (a.total_seconds || 0));
+  const sortedUsers = [...usersToRender].sort((a,b) => (b.total_seconds || 0) - (a.total_seconds || 0));
   sortedUsers.forEach((u, index) => {
     ratingList.innerHTML += `
       <div class="user-item">
         <div class="user-left"><span>#${index + 1} ${u.username || 'Студент'}</span></div>
         <div class="user-right">
-          <div class="time-text" style="font-size:13px; color:var(--accent-purple);">${formatTime(u.total_seconds || 0)}</div>
+          <div class="time-text" style="font-size:13px; color:var(--accent-purple); font-weight:800;">${formatTime(u.total_seconds || 0)}</div>
         </div>
       </div>`;
   });
 
   // 3. ВКЛАДКА ДОСТИЖЕНИЯ
   if (userObj) {
-    const myProfile = users.find(u => u.id === userObj.id);
+    const myProfile = usersToRender.find(u => u.id === userObj.id);
     if (myProfile) {
       const msgCount = myProfile.message_count || 0;
       let unlocked = 0;
@@ -453,7 +475,6 @@ async function sendChat() {
   await client.from('messages').insert([{ user_id: userObj.id, username: name, text: txt }]);
   el.value = '';
   
-  // Локально апаем счетчик сообщений для моментального рендера ачивок
   if(profileObj) {
     profileObj.message_count = (profileObj.message_count || 0) + 1;
     updateStatsGrid();
