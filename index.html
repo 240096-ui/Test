@@ -84,33 +84,40 @@ const client = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 let userObj = null, profileObj = null, seconds = 0, timer = null, working = true;
 
 async function authStateInit() {
-  // Проверяем сессию железно, чтобы подхватить токен из URL
-  const { data: { session } } = await client.auth.getSession();
-  
-  if (session && session.user) {
-    userObj = session.user;
-    document.getElementById('logged-out-view').style.display = 'none';
-    document.getElementById('logged-in-view').style.display = 'block';
-    
-    if (window.location.hash.includes('access_token=')) {
-      const cleanUrl = window.location.href.split('#')[0];
-      window.history.replaceState({}, document.title, cleanUrl);
+  // Слушаем изменения авторизации в реальном времени (подхватит токен из URL мгновенно)
+  client.auth.onAuthStateChange(async (event, session) => {
+    if (session && session.user) {
+      userObj = session.user;
+      document.getElementById('logged-out-view').style.display = 'none';
+      document.getElementById('logged-in-view').style.display = 'block';
+      
+      if (window.location.hash.includes('access_token=')) {
+        const cleanUrl = window.location.href.split('#')[0];
+        window.history.replaceState({}, document.title, cleanUrl);
+      }
+      await fetchProfile();
+    } else {
+      document.getElementById('logged-out-view').style.display = 'flex';
+      document.getElementById('logged-in-view').style.display = 'none';
     }
-    await fetchProfile();
-  } else {
-    document.getElementById('logged-out-view').style.display = 'flex';
-    document.getElementById('logged-in-view').style.display = 'none';
+  });
+
+  // Первичная проверка сессии
+  const { data: { session } } = await client.auth.getSession();
+  if (!session) {
+    getGroupData();
+    getMessages();
   }
-  getGroupData();
-  getMessages();
 }
 
 async function login() {
   await client.auth.signInWithOAuth({
     provider: 'google',
     options: { 
-      // Твой точный адрес репозитория на гитхабе
-      redirectTo: 'https://240096-ui.github.io/Test/' 
+      // Принудительно возвращаем на GitHub Pages
+      redirectTo: 'https://240096-ui.github.io/Test/',
+      // Переключаем тип авторизации на implicit, чтобы не ломался редирект
+      flowType: 'implicit'
     }
   });
 }
@@ -129,6 +136,8 @@ async function fetchProfile() {
     document.getElementById('user-fullname').textContent = data.username || userObj.email;
     if (data.status === 'Работает' || data.status === 'Онлайн') runTimer();
   }
+  getGroupData();
+  getMessages();
 }
 
 function runTimer() {
@@ -204,7 +213,6 @@ client.channel('any')
   .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, () => getMessages())
   .subscribe();
 
-// Запуск инициализации при старте страницы
 authStateInit();
 </script>
 </body>
