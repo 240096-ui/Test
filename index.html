@@ -97,7 +97,7 @@ body {
 /* Дизайн блока ачивок */
 .achievements-list { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .ach-card { background: #1a1b26; border: 1px solid rgba(255,255,255,0.03); padding: 12px; border-radius: 12px; opacity: 0.4; transition: all 0.3s; }
-.ach-card.unlocked { opacity: 1; border-color: var(--accent-purple); background: rgba(155, 81, 224, 0.05); }
+.ach-card.unlocked { opacity: 1; border-color: var(--accent-purple); background: rgba(155, 81, 224, 0.05); min-height: 110px;}
 .ach-icon { font-size: 20px; margin-bottom: 6px; }
 .ach-title { font-size: 12px; font-weight: 700; margin-bottom: 2px; }
 .ach-desc { font-size: 10px; color: var(--text-muted); }
@@ -198,8 +198,8 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 const client = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 let userObj = null, profileObj = null, sessionSeconds = 0, totalSeconds = 0, timer = null, working = true, currentTab = 'users';
 
-// Локальный кэш списка пользователей группы
 let localUsersList = [];
+let unlockedAchievements = []; // Храним массив ID открытых ачивок
 
 async function authStateInit() {
   if (window.location.hash.includes('access_token=')) await new Promise(r => setTimeout(r, 500));
@@ -239,13 +239,14 @@ async function fetchProfile() {
   let cp = profiles && profiles.length > 0 ? profiles[0] : null;
   
   if (!cp) {
-    const { data: newProfiles } = await client.from('profiles').insert([{ id: userObj.id, username: userObj.email.split('@')[0], status: 'Работает', location: 'Дома', total_seconds: 0, message_count: 0 }]).select();
+    const { data: newProfiles } = await client.from('profiles').insert([{ id: userObj.id, username: userObj.email.split('@')[0], status: 'Работает', location: 'Дома', total_seconds: 0, message_count: 0, achievements: [] }]).select();
     if (newProfiles) cp = newProfiles[0];
   }
 
   if (cp) {
     profileObj = cp;
     totalSeconds = cp.total_seconds || 0;
+    unlockedAchievements = Array.isArray(cp.achievements) ? cp.achievements : [];
     document.getElementById('user-fullname').textContent = cp.username || userObj.email;
     updateStatusUI(cp.status);
     updateStatsGrid();
@@ -260,14 +261,14 @@ function runTimer() {
     sessionSeconds++;
     totalSeconds++;
     
-    // Обновляем плашки
-    updateStatsGrid();
+    // Проверяем условия получения ачивок во время учебы
+    checkAndUnlockAchievements();
     
-    // Вызываем принудительную перерисовку списков, чтобы тикающие секунды рендерились в рейтинге
+    updateStatsGrid();
     renderListsUI();
     
-    // Синхронизируем время с базой каждые 10 секунд
-    if (sessionSeconds % 10 === 0) {
+    // Повышаем надежность: сохраняем в базу каждые 3 секунды, чтобы при выходе ничего не терялось
+    if (sessionSeconds % 3 === 0) {
       await saveTimeToDB();
     }
   }, 1000);
@@ -275,7 +276,10 @@ function runTimer() {
 
 async function saveTimeToDB() {
   if (!userObj) return;
-  await client.from('profiles').update({ total_seconds: totalSeconds }).eq('id', userObj.id);
+  await client.from('profiles').update({ 
+    total_seconds: totalSeconds,
+    achievements: unlockedAchievements
+  }).eq('id', userObj.id);
 }
 
 function formatTime(sec) {
@@ -286,6 +290,21 @@ function formatTime(sec) {
   return `${h}ч ${m}м ${s}с`;
 }
 
+// Новая функция проверки условий для ачивок
+function checkAndUnlockAchievements() {
+  let changed = false;
+  const msgCount = profileObj ? profileObj.message_count || 0 : 0;
+
+  if (totalSeconds > 0 && !unlockedAchievements.includes(1)) { unlockedAchievements.push(1); changed = true; }
+  if (totalSeconds >= 60 && !unlockedAchievements.includes(2)) { unlockedAchievements.push(2); changed = true; }
+  if (msgCount >= 5 && !unlockedAchievements.includes(3)) { unlockedAchievements.push(3); changed = true; }
+  if (msgCount >= 20 && !unlockedAchievements.includes(4)) { unlockedAchievements.push(4); changed = true; }
+
+  if (changed) {
+    saveTimeToDB(); // Если открылась новая ачивка, моментально кидаем ее в базу!
+  }
+}
+
 function updateStatsGrid() {
   document.getElementById('timer-display').textContent = formatTime(sessionSeconds);
   document.getElementById('stat-session-time').textContent = formatTime(sessionSeconds);
@@ -294,14 +313,9 @@ function updateStatsGrid() {
   const msgCount = profileObj ? profileObj.message_count || 0 : 0;
   document.getElementById('stat-messages-count').textContent = msgCount;
   
-  let unlocked = 0;
-  if (totalSeconds > 0) unlocked++;
-  if (totalSeconds >= 60) unlocked++;
-  if (msgCount >= 5) unlocked++;
-  if (msgCount >= 20) unlocked++;
-  document.getElementById('stat-ach-count').textContent = `${unlocked}/4`;
+  document.getElementById('stat-ach-count').textContent = `${unlockedAchievements.length}/4`;
   
-  if (currentTab === 'achievements') renderAchievements(unlocked, msgCount);
+  if (currentTab === 'achievements') renderAchievements();
 }
 
 async function changeStatus(newStatus) {
@@ -375,14 +389,12 @@ async function refreshData() {
   renderListsUI();
 }
 
-// Новая изолированная функция отрисовки списков с подменой твоего времени «на лету»
 function renderListsUI() {
   if (localUsersList.length === 0) return;
 
-  // Модифицируем массив: подставляем текущие тикающие секунды для авторизованного юзера
   const usersToRender = localUsersList.map(u => {
     if (userObj && u.id === userObj.id) {
-      return { ...u, total_seconds: totalSeconds };
+      return { ...u, total_seconds: totalSeconds, achievements: unlockedAchievements };
     }
     return u;
   });
@@ -407,7 +419,7 @@ function renderListsUI() {
       </div>`;
   });
 
-  // 2. ВКЛАДКА РЕЙТИНГ (Сортировка по времени)
+  // 2. ВКЛАДКА РЕЙТИНГ
   const ratingList = document.getElementById('rating-list');
   ratingList.innerHTML = '';
   const sortedUsers = [...usersToRender].sort((a,b) => (b.total_seconds || 0) - (a.total_seconds || 0));
@@ -422,37 +434,29 @@ function renderListsUI() {
   });
 
   // 3. ВКЛАДКА ДОСТИЖЕНИЯ
-  if (userObj) {
-    const myProfile = usersToRender.find(u => u.id === userObj.id);
-    if (myProfile) {
-      const msgCount = myProfile.message_count || 0;
-      let unlocked = 0;
-      if (totalSeconds > 0) unlocked++;
-      if (totalSeconds >= 60) unlocked++;
-      if (msgCount >= 5) unlocked++;
-      if (msgCount >= 20) unlocked++;
-      renderAchievements(unlocked, msgCount);
-    }
+  if (currentTab === 'achievements') {
+    renderAchievements();
   }
 }
 
-function renderAchievements(unlocked, msgCount) {
+function renderAchievements() {
   const box = document.getElementById('achievements-box');
   const achs = [
-    { id: 1, icon: '🌱', title: 'Первый шаг', desc: 'Начать самую первую учебную сессию', cond: totalSeconds > 0 },
-    { id: 2, icon: '⚡', title: 'Трудоголик', desc: 'Суммарно проучиться больше 1 минуты', cond: totalSeconds >= 60 },
-    { id: 3, icon: '💬', title: 'Душа компании', desc: 'Написать 5 сообщений в общий чат', cond: msgCount >= 5 },
-    { id: 4, icon: '🔥', title: 'Активист', desc: 'Написать 20 сообщений в чат', cond: msgCount >= 20 }
+    { id: 1, icon: '🌱', title: 'Первый шаг', desc: 'Начать самую первую учебную сессию' },
+    { id: 2, icon: '⚡', title: 'Трудоголик', desc: 'Суммарно проучиться больше 1 минуты' },
+    { id: 3, icon: '💬', title: 'Душа компании', desc: 'Написать 5 сообщений в общий чат' },
+    { id: 4, icon: '🔥', title: 'Активист', desc: 'Написать 20 сообщений в чат' }
   ];
   
   box.innerHTML = '';
   achs.forEach(a => {
+    const isUnlocked = unlockedAchievements.includes(a.id);
     box.innerHTML += `
-      <div class="ach-card ${a.cond ? 'unlocked' : ''}">
+      <div class="ach-card ${isUnlocked ? 'unlocked' : ''}">
         <div class="ach-icon">${a.icon}</div>
         <div class="ach-title">${a.title}</div>
         <div class="ach-desc">${a.desc}</div>
-        <div class="ach-status">${a.cond ? 'Обычное' : 'Закрыто'}</div>
+        <div class="ach-status">${isUnlocked ? 'Открыто' : 'Закрыто'}</div>
       </div>`;
   });
 }
@@ -477,6 +481,7 @@ async function sendChat() {
   
   if(profileObj) {
     profileObj.message_count = (profileObj.message_count || 0) + 1;
+    checkAndUnlockAchievements();
     updateStatsGrid();
   }
 }
